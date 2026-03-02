@@ -28,8 +28,8 @@ class _Screen1ScreenState extends State<Screen1Screen> {
         child: Stack(
           children: [
             Positioned(
-              left: 112,
-              top: 216,
+              left: 128,
+              top: 240,
               child: SizedBox(
               width: 200,
               child: GestureDetector(
