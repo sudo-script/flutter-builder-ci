@@ -51,7 +51,7 @@ jobs:
 
       # ── 6. Build debug APK (no signing required) ──────────────────────────
       - name: Build debug APK
-        run: flutter build apk --debug --verbose
+        run: flutter build apk --debug --target-platform android-arm64 --verbose
 
       # ── 7. Upload APK as downloadable artifact ─────────────────────────────
       - name: Upload APK
