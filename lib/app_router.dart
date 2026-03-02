@@ -15,38 +15,13 @@ abstract class AppRouter {
       builder: (context, state) => const Screen1Screen(),
     ),
     ],
-    errorBuilder: (context, state) => _ErrorScreen(error: state.error),
+    errorBuilder: (context, state) => const _ErrorScreen(),
   );
-
-  // Navigate from anywhere without a BuildContext
-  static void go(String route) => router.go(route);
-  static void push(String route) => router.push(route);
-  static void pop() => router.pop();
 }
 
 class _ErrorScreen extends StatelessWidget {
-  final Exception? error;
-  const _ErrorScreen({this.error});
-
+  const _ErrorScreen();
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Page not found')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(error?.toString() ?? 'Unknown error'),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () => AppRouter.go('/screen_1'),
-              child: const Text('Go Home'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      const Scaffold(body: Center(child: Text('Page not found')));
 }

@@ -4,7 +4,7 @@ class Screen1Screen extends StatefulWidget {
   const Screen1Screen({super.key});
 
   @override
-  State<Screen1Screen> createState() => _MainScreenState();
+  State<Screen1Screen> createState() => _Screen1ScreenState();
 }
 
 class _Screen1ScreenState extends State<Screen1Screen> {
@@ -28,8 +28,8 @@ class _Screen1ScreenState extends State<Screen1Screen> {
         child: Stack(
           children: [
             Positioned(
-              left: 96,
-              top: 336,
+              left: 144,
+              top: 184,
               child: SizedBox(
               width: 200,
               child: GestureDetector(
