@@ -11,7 +11,7 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.example.myapp"
+    namespace "myapp"
     compileSdk 33
     ndkVersion "25.1.8937393"
 
@@ -22,7 +22,7 @@ android {
     kotlinOptions { jvmTarget = '17' }
 
     defaultConfig {
-        applicationId "com.example.myapp"
+        applicationId "myapp"
         minSdk 21
         targetSdk 33
         versionCode 10000
