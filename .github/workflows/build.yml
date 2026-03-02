@@ -44,6 +44,31 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # ── 5a. Decode any binary assets (e.g. mipmap PNGs stored as base64) ──
+      - name: Decode base64 binary assets
+        run: |
+          node - <<'JSEOF'
+          const fs   = require('fs');
+          const path = require('path');
+
+          function walk(dir) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) { walk(full); continue; }
+              if (!entry.name.endsWith('.png') && !entry.name.endsWith('.jpg')) continue;
+              try {
+                const raw = fs.readFileSync(full, 'utf8').trim();
+                // Detect files that are literally just a base64 string (no PNG header)
+                if (!raw.startsWith('\x89PNG') && /^[A-Za-z0-9+/]+=*$/.test(raw)) {
+                  fs.writeFileSync(full, Buffer.from(raw, 'base64'));
+                  console.log('Decoded:', full);
+                }
+              } catch (_) {}
+            }
+          }
+          walk('android/app/src/main/res');
+          JSEOF
+
       # ── 5. Quick sanity check (non-blocking) ──────────────────────────────
       - name: Analyze (warnings only)
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
