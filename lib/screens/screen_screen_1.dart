@@ -13,8 +13,8 @@ class Screen1Screen extends StatelessWidget {
             Positioned(
               left: 72, top: 240,
               child: Text(
-                'label',
-                style: TextStyle(fontSize: 16, color: const Color(0xFF1A1B1D)),
+                'Text',
+                style: TextStyle(fontSize: 16, color: const Color(0xFF000000)),
               ),
             ),
           ],

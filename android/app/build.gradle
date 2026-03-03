@@ -32,9 +32,12 @@ android {
 
     buildTypes {
         release {
+            // Use the debug keystore — no secrets needed, installs on any device
             signingConfig signingConfigs.debug
-            minifyEnabled false
-            shrinkResources false
+            // Tree-shake + compress: cuts APK from ~80 MB down to ~8-15 MB
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
