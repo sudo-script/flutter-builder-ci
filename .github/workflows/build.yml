@@ -1,64 +1,49 @@
 name: Build Flutter APK
-
-# Triggered by the app via GitHub REST API (workflow_dispatch)
-# The app pushes generated code to 'generated' branch, then calls this
 on:
   workflow_dispatch:
     inputs:
       build_id:
-        description: 'Unique build identifier from flutter-builder'
+        description: 'Unique build identifier'
         required: true
         type: string
       app_name:
-        description: 'App display name'
         required: false
         default: 'My App'
 
 jobs:
   build-apk:
-    name: 'Build APK (${{ github.event.inputs.app_name }})'
-    runs-on: ubuntu-latest          # FREE for public repos — unlimited minutes
-
+    runs-on: ubuntu-latest
     steps:
-      # ── 1. Get the generated source code ──────────────────────────────────
-      - name: Checkout generated branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: generated            # The branch the app pushes code to
+          ref: generated
 
-      # ── 2. Java (needed by Gradle / Android build tools) ──────────────────
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      # ── 3. Flutter SDK (cached between runs for speed) ─────────────────────
-      - name: Setup Flutter SDK
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: true               # Caches Flutter SDK — saves ~2 min after first run
+          cache: true
 
-      # ── 4. Resolve pub dependencies (also cached) ─────────────────────────
-      - name: Install dependencies
-        run: flutter pub get
+      - run: flutter pub get
 
-      # ── 5. Quick sanity check (non-blocking) ──────────────────────────────
-      - name: Analyze (warnings only)
+      - name: Analyze
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
         continue-on-error: true
 
-      # ── 6. Build debug APK (no signing required) ──────────────────────────
-      - name: Build debug APK
-        run: flutter build apk --debug --verbose
+      - name: Build release APK (arm64)
+        run: |
+          flutter build apk \
+            --release \
+            --target-platform android-arm64 \
+            --split-per-abi
 
-      # ── 7. Upload APK as downloadable artifact ─────────────────────────────
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          # Name pattern lets the server find it by build_id
           name: apk-${{ github.event.inputs.build_id }}
-          path: build/app/outputs/flutter-apk/app-debug.apk
-          retention-days: 7         # Keep for 7 days then auto-delete
+          path: build/app/outputs/flutter-apk/app-release-arm64-v8a.apk
+          retention-days: 7
           if-no-files-found: error
