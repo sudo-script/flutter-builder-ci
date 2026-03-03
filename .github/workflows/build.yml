@@ -1,10 +1,9 @@
 name: Build Flutter APK
-
 on:
   workflow_dispatch:
     inputs:
       build_id:
-        description: 'Unique build identifier from flutter-builder'
+        description: 'Unique build identifier'
         required: true
         type: string
       app_name:
@@ -14,7 +13,6 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,18 +34,17 @@ jobs:
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
         continue-on-error: true
 
-      - name: Build release APK
-        run: flutter build apk --release --split-per-abi
+      - name: Build release APK (arm64)
+        run: |
+          flutter build apk \
+            --release \
+            --target-platform android-arm64 \
+            --split-per-abi
 
       - name: List APK output
-        run: |
-          echo "=== flutter-apk folder ===" 
-          ls -lh build/app/outputs/flutter-apk/ || echo "folder missing"
-          echo "=== finding all apks ==="
-          find build/ -name "*.apk" | sort
+        run: find build/ -name '*.apk' | sort
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: apk-${{ github.event.inputs.build_id }}
           path: build/app/outputs/flutter-apk/

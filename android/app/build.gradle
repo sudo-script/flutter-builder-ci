@@ -10,11 +10,8 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.withReader('UTF-8') { reader -> localProperties.load(reader) }
 }
 
-def flutterVersionCode = localProperties.getProperty('flutter.versionCode') ?: '1'
-def flutterVersionName = localProperties.getProperty('flutter.versionName') ?: '1.0'
-
 android {
-    namespace "com.example.app"
+    namespace "com.example.myapp"
     compileSdk 36
     ndkVersion "27.0.12077973"
 
@@ -23,18 +20,21 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = '17' }
+    sourceSets { main.java.srcDirs += 'src/main/kotlin' }
 
     defaultConfig {
-        applicationId "com.example.app"
+        applicationId "com.example.myapp"
         minSdkVersion 21
         targetSdkVersion 36
-        versionCode flutterVersionCode.toInteger()
-        versionName flutterVersionName
+        versionCode 10000
+        versionName "1.0.0"
     }
 
     buildTypes {
         release {
+            // Use the debug keystore — no secrets needed, installs on any device
             signingConfig signingConfigs.debug
+            // Tree-shake + compress: cuts APK from ~80 MB down to ~8-15 MB
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
