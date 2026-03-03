@@ -11,7 +11,7 @@ class Screen1Screen extends StatelessWidget {
         child: Stack(
           children: [
             Positioned(
-              left: 48, top: 264,
+              left: 104, top: 368,
               child: Text(
                 'Text',
                 style: TextStyle(fontSize: 16, color: const Color(0xFF000000)),
