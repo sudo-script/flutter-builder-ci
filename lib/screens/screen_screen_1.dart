@@ -1,24 +1,7 @@
 import 'package:flutter/material.dart';
 
-class Screen1Screen extends StatefulWidget {
+class Screen1Screen extends StatelessWidget {
   const Screen1Screen({super.key});
-
-  @override
-  State<Screen1Screen> createState() => _Screen1ScreenState();
-}
-
-class _Screen1ScreenState extends State<Screen1Screen> {
-  // No dynamic state variables
-
-  // No controllers
-
-
-
-
-
-
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -28,16 +11,12 @@ class _Screen1ScreenState extends State<Screen1Screen> {
         child: Stack(
           children: [
             Positioned(
-              left: 32,
-              top: 280,
-              child: SizedBox(
-              width: 200,
-              child: GestureDetector(
-                onTap: null,
-                child: Text('', style: TextStyle(fontSize: 16, color: const Color(0xFF000000))),
+              left: 72, top: 240,
+              child: Text(
+                'label',
+                style: TextStyle(fontSize: 16, color: const Color(0xFF1A1B1D)),
               ),
             ),
-            )
           ],
         ),
       ),
