@@ -1,4 +1,5 @@
 name: Build Flutter APK
+
 on:
   workflow_dispatch:
     inputs:
@@ -7,46 +8,85 @@ on:
         required: true
         type: string
       app_name:
+        description: 'App display name'
         required: false
         default: 'My App'
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+
     steps:
+      # 1. Checkout the generated branch
       - uses: actions/checkout@v4
         with:
           ref: generated
 
+      # 2. Java 17 — required by AGP 8 / Gradle 8
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
+      # 3. Flutter stable, pinned version, cached
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.22.0'
           channel: stable
           cache: true
 
-      - run: flutter pub get
+      # 4. Print versions for debugging failed builds
+      - name: Flutter & Dart versions
+        run: |
+          flutter --version
+          dart --version
+          java -version
 
-      - name: Analyze
+      # 5. Accept Android SDK licenses (needed on fresh runner)
+      - name: Accept Android licenses
+        run: yes | flutter doctor --android-licenses || true
+
+      # 6. Install dependencies
+      - name: flutter pub get
+        run: flutter pub get
+
+      # 7. Run build_runner only if the project uses it
+      - name: Code generation
+        run: |
+          if grep -q "build_runner" pubspec.yaml; then
+            flutter pub run build_runner build --delete-conflicting-outputs
+          else
+            echo "No build_runner — skipping"
+          fi
+
+      # 8. Static analysis — non-fatal, never blocks the build
+      - name: flutter analyze
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
         continue-on-error: true
 
-      - name: Build release APK (arm64)
+      # 9. Build debug APK
+      #    --debug        = no signing config needed
+      #    arm64 only     = ~25 MB, fast build
+      #    --no-shrink    = skip R8/ProGuard, avoids minification errors
+      - name: Build APK
         run: |
           flutter build apk \
-            --release \
+            --debug \
             --target-platform android-arm64 \
-            --split-per-abi
+            --split-per-abi \
+            --no-shrink
 
+      # 10. Confirm output
       - name: List APK output
-        run: find build/ -name '*.apk' | sort
+        run: |
+          find build/ -name '*.apk' | sort
+          find build/ -name '*.apk' -exec du -sh {} \;
 
+      # 11. Upload — name MUST match `apk-${buildId}` in githubBuildService.js
       - uses: actions/upload-artifact@v4
         with:
           name: apk-${{ github.event.inputs.build_id }}
-          path: build/app/outputs/flutter-apk/
+          path: build/app/outputs/flutter-apk/*.apk
           retention-days: 7
           if-no-files-found: error
