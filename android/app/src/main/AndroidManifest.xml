@@ -1,8 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.cvn.cnck">
+    package="com.ecc.aa">
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="My App"
+        android:label="a"
         android:name="${applicationName}"
         android:icon="@drawable/ic_launcher">
         <activity
