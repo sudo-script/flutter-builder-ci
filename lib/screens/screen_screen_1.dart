@@ -28,13 +28,13 @@ class _Screen1ScreenState extends State<Screen1Screen> {
         child: Stack(
           children: [
             Positioned(
-              left: 80,
-              top: 248,
+              left: 72,
+              top: 240,
               child: SizedBox(
               width: 200,
               child: GestureDetector(
                 onTap: null,
-                child: Text('aaaa', style: TextStyle(fontSize: 40, color: const Color(0xFF126EE9))),
+                child: Text('ahjkhs', style: TextStyle(fontSize: 70, color: const Color(0xFF2473DC))),
               ),
             ),
             )
