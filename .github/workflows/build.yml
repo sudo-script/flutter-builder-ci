@@ -30,16 +30,12 @@ jobs:
 
       - run: flutter pub get
 
-      - name: Analyze
+      - name: Analyze (warnings only)
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
         continue-on-error: true
 
-      - name: Build release APK (arm64)
-        run: |
-          flutter build apk \
-            --release \
-            --target-platform android-arm64 \
-            --split-per-abi
+      - name: Build debug APK
+        run: flutter build apk --debug --target-platform android-arm64
 
       - name: List APK output
         run: find build/ -name '*.apk' | sort

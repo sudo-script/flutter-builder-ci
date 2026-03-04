@@ -1,10 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.hehe.eheh">
+    package="com.ex.cs">
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="My App"
+        android:label="nkdnfk"
         android:name="${applicationName}"
-        android:icon="@android:drawable/sym_def_app_icon">
+        android:icon="@drawable/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"

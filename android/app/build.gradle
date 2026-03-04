@@ -11,7 +11,7 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.hehe.eheh"
+    namespace "com.ex.cs"
     compileSdk 36
     ndkVersion "27.0.12077973"
 
@@ -23,7 +23,7 @@ android {
     sourceSets { main.java.srcDirs += 'src/main/kotlin' }
 
     defaultConfig {
-        applicationId "com.hehe.eheh"
+        applicationId "com.ex.cs"
         minSdkVersion 21
         targetSdkVersion 36
         versionCode 10000
@@ -32,9 +32,7 @@ android {
 
     buildTypes {
         release {
-            // Use the debug keystore — no secrets needed, installs on any device
             signingConfig signingConfigs.debug
-            // Tree-shake + compress: cuts APK from ~80 MB down to ~8-15 MB
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
