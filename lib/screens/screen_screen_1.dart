@@ -28,13 +28,30 @@ class _Screen1ScreenState extends State<Screen1Screen> {
         child: Stack(
           children: [
             Positioned(
-              left: 96,
-              top: 200,
+              left: 64,
+              top: 264,
               child: SizedBox(
-              width: 200,
-              child: GestureDetector(
-                onTap: null,
-                child: Text('fnk,nvfv,', style: TextStyle(fontSize: 50, color: const Color(0xFF191A1B))),
+              width: 248, height: 128,
+              child: Card(
+                elevation: 4.0,
+                color: const Color(0xFFF6D92F),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                child: InkWell(
+                  onTap: null,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Center(
+                    child: Text(
+                      'tete',
+                      style: TextStyle(
+                        fontSize: 40,
+                        color: const Color(0xFFFFFFFF),
+                      ),
+                    ),
+                  ),
+                ),
+                ),
               ),
             ),
             )
