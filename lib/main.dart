@@ -4,16 +4,16 @@ import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ApApp());
+  runApp(const MyAppApp());
 }
 
-class ApApp extends StatelessWidget {
-  const ApApp({super.key});
+class MyAppApp extends StatelessWidget {
+  const MyAppApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'ap',
+      title: 'My App',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

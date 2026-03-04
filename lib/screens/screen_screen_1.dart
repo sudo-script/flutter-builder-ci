@@ -28,29 +28,13 @@ class _Screen1ScreenState extends State<Screen1Screen> {
         child: Stack(
           children: [
             Positioned(
-              left: 64,
-              top: 280,
-              child: SizedBox(
-              width: 200, height: 48,
-              child: Card(
-                elevation: 4.0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                child: InkWell(
-                  onTap: null,
-                  borderRadius: BorderRadius.circular(8),
-                  child: const Padding(padding: EdgeInsets.all(16), child: SizedBox.shrink()),
-                ),
-              ),
-            ),
-            ),
-            Positioned(
-              left: 120,
-              top: 312,
+              left: 80,
+              top: 248,
               child: SizedBox(
               width: 200,
               child: GestureDetector(
                 onTap: null,
-                child: Text('text inside', style: TextStyle(fontSize: 24, color: const Color(0xFFFAFAFA))),
+                child: Text('aaaa', style: TextStyle(fontSize: 40, color: const Color(0xFF126EE9))),
               ),
             ),
             )

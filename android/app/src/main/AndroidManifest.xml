@@ -1,8 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.enk.cn">
+    package="com.exaanlkx.ca">
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="ap"
+        android:label="My App"
         android:name="${applicationName}"
         android:icon="@drawable/ic_launcher">
         <activity
