@@ -4,16 +4,16 @@ import 'theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const NkdnfkApp());
+  runApp(const MyAppApp());
 }
 
-class NkdnfkApp extends StatelessWidget {
-  const NkdnfkApp({super.key});
+class MyAppApp extends StatelessWidget {
+  const MyAppApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'nkdnfk',
+      title: 'My App',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
