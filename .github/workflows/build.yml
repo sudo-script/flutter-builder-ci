@@ -1,75 +1,48 @@
 name: Build Flutter APK
-
 on:
   workflow_dispatch:
     inputs:
       build_id:
-        description: 'Unique build identifier from flutter-builder'
+        description: 'Unique build identifier'
         required: true
         type: string
       app_name:
-        description: 'App display name'
         required: false
         default: 'My App'
 
 jobs:
   build-apk:
-    name: 'Build APK (${{ github.event.inputs.app_name }})'
     runs-on: ubuntu-latest
-
     steps:
-      # ── 1. Source code ─────────────────────────────────────────────────────
-      - name: Checkout generated branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: generated
 
-      # ── 2. Java ────────────────────────────────────────────────────────────
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      # ── 3. Flutter SDK ─────────────────────────────────────────────────────
-      - name: Setup Flutter SDK
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
-      # ── 4. Dependencies ────────────────────────────────────────────────────
-      - name: Install dependencies
-        run: flutter pub get
+      - run: flutter pub get
 
-      # ── 5. Analyze (non-blocking) ──────────────────────────────────────────
-      - name: Analyze
+      - name: Analyze (warnings only)
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
         continue-on-error: true
 
-      # ── 6. Build release APK — arm64 only, signed with debug keystore ──────
-      #   Why release not debug?
-      #     Debug APKs bundle the Dart VM + observatory = always 60-90 MB.
-      #     Release APKs use AOT compilation + tree-shaking = 8-20 MB.
-      #   Why --split-per-abi?
-      #     Produces one APK per CPU arch instead of a fat multi-arch APK.
-      #     arm64-v8a covers all Android phones made after 2015.
-      #   Why signingConfig signingConfigs.debug in build.gradle?
-      #     The debug keystore (~/.android/debug.keystore) is already on every
-      #     CI runner — no secrets needed. The APK installs fine on any device.
-      - name: Build release APK (arm64, debug-signed)
-        run: |
-          flutter build apk \
-            --release \
-            --target-platform android-arm64 \
-            --split-per-abi \
-            --verbose
+      - name: Build release APK (arm64 only — ~8-15 MB)
+        run: flutter build apk --release --target-platform android-arm64 --split-per-abi
 
-      # ── 7. Upload ──────────────────────────────────────────────────────────
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: List APK output
+        run: find build/ -name '*.apk' | sort
+
+      - uses: actions/upload-artifact@v4
         with:
           name: apk-${{ github.event.inputs.build_id }}
-          path: build/app/outputs/flutter-apk/app-release-arm64-v8a.apk
+          path: build/app/outputs/flutter-apk/
           retention-days: 7
           if-no-files-found: error
