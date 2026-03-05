@@ -34,7 +34,7 @@ jobs:
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
         continue-on-error: true
 
-      - name: Build release APK (arm64 only — ~8-15 MB)
+      - name: Build release APK (arm64 only, ~8-15 MB)
         run: flutter build apk --release --target-platform android-arm64 --split-per-abi
 
       - name: List APK output
