@@ -8,11 +8,17 @@ class Screen1Screen extends StatefulWidget {
 }
 
 class _Screen1ScreenState extends State<Screen1Screen> {
-  // No dynamic state variables
+  String text_1_text = 'furst';
 
   // No controllers
 
-
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 2000), () {
+    if (mounted) { setState(() { text_1_text = 'mew'; }); }
+  });
+  }
 
 
 
@@ -28,30 +34,13 @@ class _Screen1ScreenState extends State<Screen1Screen> {
         child: Stack(
           children: [
             Positioned(
-              left: 64,
-              top: 264,
+              left: 120,
+              top: 192,
               child: SizedBox(
-              width: 248, height: 128,
-              child: Card(
-                elevation: 4.0,
-                color: const Color(0xFFF6D92F),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                child: InkWell(
-                  onTap: null,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Center(
-                    child: Text(
-                      'tete',
-                      style: TextStyle(
-                        fontSize: 40,
-                        color: const Color(0xFFFFFFFF),
-                      ),
-                    ),
-                  ),
-                ),
-                ),
+              width: 160,
+              child: GestureDetector(
+                onTap: null,
+                child: Text(text_1_text, style: TextStyle(fontSize: 16.0, color: const Color(0xFFA18AEC))),
               ),
             ),
             )
