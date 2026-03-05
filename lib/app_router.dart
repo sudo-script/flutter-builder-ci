@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'screens/screen_screen_1.dart';
+import 'screens/screen_screen_2.dart';
 
 abstract class AppRouter {
   AppRouter._();
@@ -13,6 +14,11 @@ abstract class AppRouter {
       path: '/screen_1',
       name: 'Screen1Screen',
       builder: (context, state) => const Screen1Screen(),
+    ),
+    GoRoute(
+      path: '/screen_2',
+      name: 'Screen2Screen',
+      builder: (context, state) => const Screen2Screen(),
     ),
     ],
     errorBuilder: (context, state) => const _ErrorScreen(),
