@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.nfdlnf.dskvl">
+    package="com.tnt.fa">
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="My App"
