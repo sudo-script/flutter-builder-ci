@@ -31,14 +31,14 @@ class _Screen1ScreenState extends State<Screen1Screen> {
         child: Stack(
           children: [
             Positioned(
-              left: 184,
-              top: 168,
+              left: 152,
+              top: 184,
               child: SizedBox(
-                width: 104, height: 232,
+                width: 112, height: 272,
                 child: ElevatedButton(
                   onPressed: () { _handleButton_1Tap(); },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF354EA7),
+                    backgroundColor: const Color(0xFF1E5FB5),
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
