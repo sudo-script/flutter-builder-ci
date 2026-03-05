@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class Screen2Screen extends StatefulWidget {
   const Screen2Screen({super.key});
@@ -28,15 +29,9 @@ class _Screen2ScreenState extends State<Screen2Screen> {
         child: Stack(
           children: [
             Positioned(
-              left: 128,
-              top: 232,
-              child: SizedBox(
-              width: 120,
-              child: GestureDetector(
-                onTap: null,
-                child: Text('screenwto', style: TextStyle(fontSize: 30.0, color: const Color(0xFFCE441F))),
-              ),
-            ),
+              left: 56,
+              top: 224,
+              child: Text('toow', style: TextStyle(fontSize: 40.0, color: const Color(0xFF2C6ABD))),
             )
           ],
         ),
