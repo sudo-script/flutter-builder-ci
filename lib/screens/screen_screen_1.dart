@@ -34,15 +34,15 @@ class _Screen1ScreenState extends State<Screen1Screen> {
               left: 152,
               top: 184,
               child: SizedBox(
-                width: 112, height: 272,
+                width: 152, height: 176,
                 child: ElevatedButton(
                   onPressed: () { _handleButton_1Tap(); },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E5FB5),
+                    backgroundColor: const Color(0xFF34755F),
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: Text('Button', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                  child: const SizedBox.shrink(),
                 ),
               ),
             )

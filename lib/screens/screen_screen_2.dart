@@ -29,9 +29,9 @@ class _Screen2ScreenState extends State<Screen2Screen> {
         child: Stack(
           children: [
             Positioned(
-              left: 136,
-              top: 176,
-              child: Text('towww', style: TextStyle(fontSize: 40.0, color: const Color(0xFF2C5FA2))),
+              left: 80,
+              top: 280,
+              child: Text('new screen', style: TextStyle(fontSize: 40.0, color: const Color(0xFF25456F))),
             )
           ],
         ),
