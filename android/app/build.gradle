@@ -11,7 +11,7 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.jdlfd.asnf"
+    namespace "com.basjb.dkd"
     compileSdk 36
     ndkVersion "27.0.12077973"
 
@@ -23,7 +23,7 @@ android {
     sourceSets { main.java.srcDirs += 'src/main/kotlin' }
 
     defaultConfig {
-        applicationId "com.jdlfd.asnf"
+        applicationId "com.basjb.dkd"
         minSdkVersion 21
         targetSdkVersion 36
         versionCode 10000

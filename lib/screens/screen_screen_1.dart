@@ -9,17 +9,21 @@ class Screen1Screen extends StatefulWidget {
 }
 
 class _Screen1ScreenState extends State<Screen1Screen> {
-  // No dynamic state variables
+  String text_1_text = 'Arun';
 
   // No controllers
 
-
-
-
-
-  void _handleButton_1Tap() {
-    context.go('/screen_2');
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 4000), () {
+    if (mounted) { setState(() { text_1_text = 'akg'; }); }
+  });
   }
+
+
+
+
 
 
 
@@ -31,20 +35,9 @@ class _Screen1ScreenState extends State<Screen1Screen> {
         child: Stack(
           children: [
             Positioned(
-              left: 152,
-              top: 184,
-              child: SizedBox(
-                width: 152, height: 176,
-                child: ElevatedButton(
-                  onPressed: () { _handleButton_1Tap(); },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF34755F),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: const SizedBox.shrink(),
-                ),
-              ),
+              left: 56,
+              top: 232,
+              child: Text(text_1_text, style: TextStyle(fontSize: 16.0, color: const Color(0xFF0B0C0D))),
             )
           ],
         ),
