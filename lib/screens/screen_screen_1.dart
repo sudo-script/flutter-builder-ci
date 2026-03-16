@@ -9,15 +9,15 @@ class Screen1Screen extends StatefulWidget {
 }
 
 class _Screen1ScreenState extends State<Screen1Screen> {
-  String text_1_text = 'Arun';
+  String text_1_text = 'heh';
 
   // No controllers
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 4000), () {
-    if (mounted) { setState(() { text_1_text = 'akg'; }); }
+    Future.delayed(const Duration(milliseconds: 3000), () {
+    if (mounted) { setState(() { text_1_text = 'wow'; }); }
   });
   }
 
@@ -35,9 +35,9 @@ class _Screen1ScreenState extends State<Screen1Screen> {
         child: Stack(
           children: [
             Positioned(
-              left: 56,
-              top: 232,
-              child: Text(text_1_text, style: TextStyle(fontSize: 16.0, color: const Color(0xFF0B0C0D))),
+              left: 152,
+              top: 184,
+              child: Text(text_1_text, style: TextStyle(fontSize: 16.0, color: const Color(0xFF34373B))),
             )
           ],
         ),
