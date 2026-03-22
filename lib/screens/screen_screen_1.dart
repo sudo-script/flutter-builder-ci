@@ -29,9 +29,9 @@ class _Screen1ScreenState extends State<Screen1Screen> {
         child: Stack(
           children: [
             Positioned(
-              left: 96,
-              top: 280,
-              child: Text('Label', style: TextStyle(fontSize: 16.0, color: const Color(0xFF191B1F))),
+              left: 176,
+              top: 232,
+              child: Text('Label', style: TextStyle(fontSize: 16.0, color: const Color(0xFFE2E8F0))),
             )
           ],
         ),
