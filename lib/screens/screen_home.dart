@@ -5,7 +5,7 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
@@ -18,97 +18,93 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  Widget _buildDot(int index) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.symmetric(horizontal: 4.0),
+      width: 8.0,
+      height: 8.0,
+      decoration: BoxDecoration(
+        color: _currentPage == index ? Colors.black : Colors.grey,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Stack(
       children: [
-        Expanded(
-          child: PageView.builder(
-            controller: _pageController,
-            itemCount: 2,
-            onPageChanged: (index) {
-              setState(() {
-                _currentPage = index;
-              });
-            },
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return const PageOneWidget();
-              } else {
-                return const PageTwoWidget();
-              }
-            },
+        PageView.builder(
+          controller: _pageController,
+          itemCount: 2,
+          onPageChanged: (index) {
+            setState(() {
+              _currentPage = index;
+            });
+          },
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return const PageOne();
+            } else {
+              return const PageTwo();
+            }
+          },
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 30.0,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(2, (index) => _buildDot(index)),
           ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(2, (index) {
-            return Container(
-              width: 8,
-              height: 8,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _currentPage == index ? Colors.black : Colors.grey,
-              ),
-            );
-          }),
-        ),
-        const SizedBox(height: 16),
       ],
     );
   }
 }
 
-class PageOneWidget extends StatelessWidget {
-  const PageOneWidget({Key? key}) : super(key: key);
+class PageOne extends StatelessWidget {
+  const PageOne({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 844,
-      child: Stack(
-        children: [
-          Positioned(
-            left: 80,
-            top: 168,
-            child: Image.asset(
-              'assets/images/midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a_3.jpg',
-              width: 240,
-              height: 424,
-              fit: BoxFit.cover,
-            ),
+    return Stack(
+      children: [
+        Positioned(
+          left: 96.0,
+          top: 320.0,
+          width: 216.0,
+          height: 432.0,
+          child: Image.asset(
+            'assets/images/☁️ ..... #midjourney #aiart #aiartcommunity #animeart #animeartist #niji #digitalart #pokemon #a (3).jpg',
+            fit: BoxFit.cover,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class PageTwoWidget extends StatelessWidget {
-  const PageTwoWidget({Key? key}) : super(key: key);
+class PageTwo extends StatelessWidget {
+  const PageTwo({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 844,
-      child: Stack(
-        children: [
-          Positioned(
-            left: 56,
-            top: 148,
-            child: Image.asset(
-              'assets/images/midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a_2.jpg',
-              width: 280,
-              height: 496,
-              fit: BoxFit.cover,
-            ),
+    return Stack(
+      children: [
+        Positioned(
+          left: 64.0,
+          top: 172.0,
+          width: 264.0,
+          height: 504.0,
+          child: Image.asset(
+            'assets/images/☁️ ..... #midjourney #aiart #aiartcommunity #animeart #animeartist #niji #digitalart #pokemon #a.jpg',
+            fit: BoxFit.cover,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

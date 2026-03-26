@@ -4,6 +4,8 @@
 abstract class AppImages {
   AppImages._();
 
-  static const String __________midjourney__aiart__aiartcommunity__animeart__animeartist__niji__digitalart__pokemon__a__3_ = 'assets/images/☁️ ..... #midjourney #aiart #aiartcommunity #animeart #animeartist #niji #digitalart #pokemon #a (3).jpg';
-  static const String __________midjourney__aiart__aiartcommunity__animeart__animeartist__niji__digitalart__pokemon__a__2_ = 'assets/images/☁️ ..... #midjourney #aiart #aiartcommunity #animeart #animeartist #niji #digitalart #pokemon #a (2).jpg';
+  static const String midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a_3 = 'assets/images/midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a_3.jpg';
+  static const String midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a = 'assets/images/midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a.jpg';
+  static const String midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a_3 = 'assets/images/midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a_3.jpg';
+  static const String midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a = 'assets/images/midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a.jpg';
 }
