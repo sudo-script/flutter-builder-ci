@@ -1,4 +1,4 @@
-name: dsn
+name: dg
 description: "My App - built with Flutter Builder"
 publish_to: none
 version: 1.0.0+1
@@ -23,5 +23,6 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a_3.jpg
-    - assets/images/midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a.jpg
+    - assets/images/loss_vs_iterations.png
+    - assets/images/img_270187.jpg
+    - assets/images/img_270187_2.jpg
