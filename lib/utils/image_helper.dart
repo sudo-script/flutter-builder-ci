@@ -5,4 +5,6 @@ abstract class AppImages {
   AppImages._();
 
   static const String midjourney_aiart_aiartcommunity_animeart = 'assets/images/midjourney_aiart_aiartcommunity_animeart.jpg';
+  static const String midjourney_aiart_aiartcommunity_animeart_2 = 'assets/images/midjourney_aiart_aiartcommunity_animeart_2.jpg';
+  static const String midjourney_aiart_aiartcommunity_animeart_3 = 'assets/images/midjourney_aiart_aiartcommunity_animeart_3.jpg';
 }

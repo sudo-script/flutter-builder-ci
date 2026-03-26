@@ -1,4 +1,4 @@
-name: fdsa
+name: dadfs
 description: "My App - built with Flutter Builder"
 publish_to: none
 version: 1.0.0+1
@@ -24,3 +24,5 @@ flutter:
 
   assets:
     - assets/images/midjourney_aiart_aiartcommunity_animeart.jpg
+    - assets/images/midjourney_aiart_aiartcommunity_animeart_2.jpg
+    - assets/images/midjourney_aiart_aiartcommunity_animeart_3.jpg

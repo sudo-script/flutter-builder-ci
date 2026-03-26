@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.exa.fdsa">
+    package="com.exam.dadfs">
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="My App"
