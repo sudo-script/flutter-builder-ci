@@ -4,6 +4,6 @@
 abstract class AppImages {
   AppImages._();
 
-  static const String scatter_best_fit = 'assets/images/scatter_best_fit.png';
-  static const String loss_vs_iterations = 'assets/images/loss_vs_iterations.png';
+  static const String __________midjourney__aiart__aiartcommunity__animeart__animeartist__niji__digitalart__pokemon__a__3_ = 'assets/images/☁️ ..... #midjourney #aiart #aiartcommunity #animeart #animeartist #niji #digitalart #pokemon #a (3).jpg';
+  static const String __________midjourney__aiart__aiartcommunity__animeart__animeartist__niji__digitalart__pokemon__a__2_ = 'assets/images/☁️ ..... #midjourney #aiart #aiartcommunity #animeart #animeartist #niji #digitalart #pokemon #a (2).jpg';
 }

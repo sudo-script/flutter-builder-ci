@@ -1,4 +1,4 @@
-name: sdfkl
+name: sd
 description: "My App - built with Flutter Builder"
 publish_to: none
 version: 1.0.0+1
@@ -23,5 +23,5 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/scatter_best_fit.png
-    - assets/images/loss_vs_iterations.png
+    - assets/images/☁️ ..... #midjourney #aiart #aiartcommunity #animeart #animeartist #niji #digitalart #pokemon #a (3).jpg
+    - assets/images/☁️ ..... #midjourney #aiart #aiartcommunity #animeart #animeartist #niji #digitalart #pokemon #a (2).jpg
