@@ -8,9 +8,11 @@ abstract class AppTheme {
 
   static ThemeData light() => ThemeData(
     useMaterial3: true,
+    scaffoldBackgroundColor: Colors.white,
     colorScheme: ColorScheme.fromSeed(
       seedColor: _primary,
       secondary: _secondary,
+      brightness: Brightness.light,
     ),
     appBarTheme: const AppBarTheme(centerTitle: false, elevation: 0),
     elevatedButtonTheme: ElevatedButtonThemeData(

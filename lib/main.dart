@@ -16,8 +16,8 @@ class MyAppApp extends StatelessWidget {
       title: 'My App',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
+      // No darkTheme — prevents black screen on dark-mode devices
+      // The app uses a consistent light theme matching the designer canvas
       routerConfig: AppRouter.router,
     );
   }

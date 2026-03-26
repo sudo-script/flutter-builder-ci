@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'screens/screen_screen_1.dart';
+import 'screens/screen_home.dart';
 
 abstract class AppRouter {
   AppRouter._();
 
   static final GoRouter router = GoRouter(
-    initialLocation: '/screen_1',
+    initialLocation: '/home',
     debugLogDiagnostics: false,
     routes: [
     GoRoute(
-      path: '/screen_1',
-      name: 'Screen1Screen',
-      builder: (context, state) => const Screen1Screen(),
+      path: '/home',
+      name: 'HomeScreen',
+      builder: (context, state) => const HomeScreen(),
     ),
     ],
     errorBuilder: (context, state) => const _ErrorScreen(),

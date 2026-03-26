@@ -1,4 +1,4 @@
-name: fkld
+name: fdbjk
 description: "My App - built with Flutter Builder"
 publish_to: none
 version: 1.0.0+1
@@ -21,3 +21,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/images/scatter_best_fit.png
