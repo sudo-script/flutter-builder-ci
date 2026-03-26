@@ -1,4 +1,4 @@
-name: fdbjk
+name: sdfkl
 description: "My App - built with Flutter Builder"
 publish_to: none
 version: 1.0.0+1
@@ -24,3 +24,4 @@ flutter:
 
   assets:
     - assets/images/scatter_best_fit.png
+    - assets/images/loss_vs_iterations.png

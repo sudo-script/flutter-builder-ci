@@ -5,4 +5,5 @@ abstract class AppImages {
   AppImages._();
 
   static const String scatter_best_fit = 'assets/images/scatter_best_fit.png';
+  static const String loss_vs_iterations = 'assets/images/loss_vs_iterations.png';
 }
