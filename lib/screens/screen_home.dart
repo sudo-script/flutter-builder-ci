@@ -2,25 +2,23 @@ import 'package:flutter/material.dart';
 import '../utils/image_helper.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
-
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late final PageController _ctrl;
-  int _page = 0;
+  late PageController _pageController;
+  int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = PageController();
-    _ctrl.addListener(() {
-      final newPage = _ctrl.page?.round() ?? 0;
-      if (newPage != _page) {
+    _pageController = PageController();
+    _pageController.addListener(() {
+      int page = _pageController.page!.round();
+      if (_currentPage != page) {
         setState(() {
-          _page = newPage;
+          _currentPage = page;
         });
       }
     });
@@ -28,68 +26,46 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: PageView(
-        controller: _ctrl,
+      body: Column(
         children: [
-          const _Page1(),
-          const _Page2(),
-        ],
-      ),
-    );
-  }
-}
-
-class _Page1 extends StatelessWidget {
-  const _Page1({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox.expand(
-      child: Stack(
-        children: [
-          Positioned(
-            left: 48,
-            top: 272,
-            width: 296,
-            height: 288,
-            child: Image.asset(
-              'assets/images/loss_vs_iterations.png',
-              fit: BoxFit.cover,
+          Expanded(
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: 2,
+              itemBuilder: (context, index) {
+                switch (index) {
+                  case 0:
+                    return PageOne();
+                  case 1:
+                    return PageTwo();
+                  default:
+                    return Container();
+                }
+              },
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 16,
+          Padding(
+            padding: const EdgeInsets.all(16.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Container(
-                  width: 8,
-                  height: 8,
+              children: List.generate(2, (index) {
+                return Container(
+                  width: 10,
+                  height: 10,
+                  margin: const EdgeInsets.symmetric(horizontal: 4.0),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.grey,
+                    color: _currentPage == index ? Colors.black : Colors.grey,
                   ),
-                ),
-              ],
+                );
+              }),
             ),
           ),
         ],
@@ -98,49 +74,46 @@ class _Page1 extends StatelessWidget {
   }
 }
 
-class _Page2 extends StatelessWidget {
-  const _Page2({Key? key}) : super(key: key);
-
+class PageOne extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox.expand(
       child: Stack(
         children: [
           Positioned(
-            left: 24,
-            top: 220,
-            width: 344,
-            height: 200,
-            child: Image.asset(
-              'assets/images/270187.jpg',
-              fit: BoxFit.cover,
+            left: 96,
+            top: 320,
+            child: SizedBox(
+              width: 200,
+              height: 200,
+              child: Image.asset(
+                'assets/images/loss_vs_iterations.png',
+                fit: BoxFit.cover,
+              ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class PageTwo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.expand(
+      child: Stack(
+        children: [
           Positioned(
-            left: 0,
-            right: 0,
-            bottom: 16,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.grey,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.black,
-                  ),
-                ),
-              ],
+            left: 40,
+            top: 276,
+            child: SizedBox(
+              width: 272,
+              height: 384,
+              child: Image.asset(
+                'assets/images/106881.jpg',
+                fit: BoxFit.cover,
+              ),
             ),
           ),
         ],
