@@ -1,4 +1,4 @@
-name: df
+name: fdsa
 description: "My App - built with Flutter Builder"
 publish_to: none
 version: 1.0.0+1
@@ -23,5 +23,4 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a_1.jpg
-    - assets/images/img_1354791.jpeg
+    - assets/images/midjourney_aiart_aiartcommunity_animeart.jpg

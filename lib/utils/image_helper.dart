@@ -4,6 +4,5 @@
 abstract class AppImages {
   AppImages._();
 
-  static const String midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a_1 = 'assets/images/midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a_1.jpg';
-  static const String img_1354791 = 'assets/images/img_1354791.jpeg';
+  static const String midjourney_aiart_aiartcommunity_animeart = 'assets/images/midjourney_aiart_aiartcommunity_animeart.jpg';
 }
