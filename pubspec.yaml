@@ -1,4 +1,4 @@
-name: aefgs
+name: sd
 description: "My App - built with Flutter Builder"
 publish_to: none
 version: 1.0.0+1
@@ -24,5 +24,4 @@ flutter:
 
   assets:
     - assets/images/loss_vs_iterations.png
-    - assets/images/midjourney_aiart_aiartcommunity_animeart.jpg
-    - assets/images/midjourney_aiart_aiartcommunity_animeart_2.jpg
+    - assets/images/midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a_3.jpg

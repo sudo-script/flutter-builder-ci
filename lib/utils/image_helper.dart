@@ -5,6 +5,5 @@ abstract class AppImages {
   AppImages._();
 
   static const String loss_vs_iterations = 'assets/images/loss_vs_iterations.png';
-  static const String midjourney_aiart_aiartcommunity_animeart = 'assets/images/midjourney_aiart_aiartcommunity_animeart.jpg';
-  static const String midjourney_aiart_aiartcommunity_animeart_2 = 'assets/images/midjourney_aiart_aiartcommunity_animeart_2.jpg';
+  static const String midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a_3 = 'assets/images/midjourney_aiart_aiartcommunity_animeart_animeartist_niji_digitalart_pokemon_a_3.jpg';
 }

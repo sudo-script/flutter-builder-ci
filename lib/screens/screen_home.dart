@@ -7,26 +7,19 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final PageController _pageController = PageController(initialPage: 0);
-  int _currentPage = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController.addListener(() {
-      int next = _pageController.page?.round() ?? 0;
-      if (_currentPage != next) {
-        setState(() {
-          _currentPage = next;
-        });
-      }
-    });
-  }
+  final PageController _ctrl = PageController(initialPage: 0);
+  int _page = 0;
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _ctrl.dispose();
     super.dispose();
+  }
+
+  void _onPageChanged(int page) {
+    setState(() {
+      _page = page;
+    });
   }
 
   @override
@@ -34,10 +27,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: PageView(
-        controller: _pageController,
-        children: [
-          PageOne(_currentPage),
-          PageTwo(_currentPage),
+        controller: _ctrl,
+        onPageChanged: _onPageChanged,
+        children: <Widget>[
+          PageOne(currentIndex: _page),
+          PageTwo(),
         ],
       ),
     );
@@ -45,8 +39,9 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class PageOne extends StatelessWidget {
-  final int currentPage;
-  PageOne(this.currentPage);
+  final int currentIndex;
+
+  PageOne({required this.currentIndex});
 
   @override
   Widget build(BuildContext context) {
@@ -58,29 +53,33 @@ class PageOne extends StatelessWidget {
             top: 336,
             width: 304,
             height: 200,
-            child: Image.asset(
-              'assets/images/loss_vs_iterations.png',
-              fit: BoxFit.cover,
+            child: SizedBox(
+              width: 304,
+              height: 200,
+              child: Image.asset(
+                'assets/images/loss_vs_iterations.png',
+                fit: BoxFit.cover,
+              ),
             ),
           ),
           Positioned(
-            bottom: 20,
             left: 0,
             right: 0,
+            bottom: 20,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                2,
-                (index) => Container(
-                  width: 8,
-                  height: 8,
+              children: List.generate(2, (index) {
+                bool isSelected = index == currentIndex;
+                return Container(
+                  width: isSelected ? 12 : 8,
+                  height: isSelected ? 12 : 8,
                   margin: EdgeInsets.symmetric(horizontal: 4),
                   decoration: BoxDecoration(
-                    color: index == currentPage ? Colors.black : Colors.grey,
                     shape: BoxShape.circle,
+                    color: isSelected ? Colors.blue : Colors.grey,
                   ),
-                ),
-              ),
+                );
+              }),
             ),
           ),
         ],
@@ -90,9 +89,6 @@ class PageOne extends StatelessWidget {
 }
 
 class PageTwo extends StatelessWidget {
-  final int currentPage;
-  PageTwo(this.currentPage);
-
   @override
   Widget build(BuildContext context) {
     return SizedBox.expand(
@@ -105,26 +101,6 @@ class PageTwo extends StatelessWidget {
             height: 528,
             child: Container(
               color: Colors.transparent,
-            ),
-          ),
-          Positioned(
-            bottom: 20,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                2,
-                (index) => Container(
-                  width: 8,
-                  height: 8,
-                  margin: EdgeInsets.symmetric(horizontal: 4),
-                  decoration: BoxDecoration(
-                    color: index == currentPage ? Colors.black : Colors.grey,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
             ),
           ),
         ],
