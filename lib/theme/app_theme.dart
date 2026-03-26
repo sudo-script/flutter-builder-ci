@@ -8,7 +8,7 @@ abstract class AppTheme {
 
   static ThemeData light() => ThemeData(
     useMaterial3: true,
-    brightness: Brightness.light,          // Force light — never inherit system dark
+    brightness: Brightness.light,
     scaffoldBackgroundColor: Colors.white,
     canvasColor: Colors.white,
     colorScheme: ColorScheme.fromSeed(

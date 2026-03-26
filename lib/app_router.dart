@@ -12,7 +12,7 @@ abstract class AppRouter {
     GoRoute(
       path: '/home',
       name: 'HomeScreen',
-      builder: (context, state) => const HomeScreen(),
+      builder: (context, state) => HomeScreen(),
     ),
     ],
     errorBuilder: (context, state) => const _ErrorScreen(),
