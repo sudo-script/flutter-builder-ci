@@ -7,18 +7,17 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late PageController _pageController;
+  final PageController _pageController = PageController(initialPage: 0);
   int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
     _pageController.addListener(() {
-      int page = _pageController.page!.round();
-      if (_currentPage != page) {
+      int next = _pageController.page?.round() ?? 0;
+      if (_currentPage != next) {
         setState(() {
-          _currentPage = page;
+          _currentPage = next;
         });
       }
     });
@@ -33,41 +32,12 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      backgroundColor: Colors.white,
+      body: PageView(
+        controller: _pageController,
         children: [
-          Expanded(
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: 2,
-              itemBuilder: (context, index) {
-                switch (index) {
-                  case 0:
-                    return PageOne();
-                  case 1:
-                    return PageTwo();
-                  default:
-                    return Container();
-                }
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(2, (index) {
-                return Container(
-                  width: 10,
-                  height: 10,
-                  margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _currentPage == index ? Colors.black : Colors.grey,
-                  ),
-                );
-              }),
-            ),
-          ),
+          PageOne(_currentPage),
+          PageTwo(_currentPage),
         ],
       ),
     );
@@ -75,20 +45,41 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class PageOne extends StatelessWidget {
+  final int currentPage;
+  PageOne(this.currentPage);
+
   @override
   Widget build(BuildContext context) {
     return SizedBox.expand(
       child: Stack(
         children: [
           Positioned(
-            left: 96,
-            top: 320,
-            child: SizedBox(
-              width: 200,
-              height: 200,
-              child: Image.asset(
-                'assets/images/loss_vs_iterations.png',
-                fit: BoxFit.cover,
+            left: 40,
+            top: 336,
+            width: 304,
+            height: 200,
+            child: Image.asset(
+              'assets/images/loss_vs_iterations.png',
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned(
+            bottom: 20,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                2,
+                (index) => Container(
+                  width: 8,
+                  height: 8,
+                  margin: EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: index == currentPage ? Colors.black : Colors.grey,
+                    shape: BoxShape.circle,
+                  ),
+                ),
               ),
             ),
           ),
@@ -99,20 +90,40 @@ class PageOne extends StatelessWidget {
 }
 
 class PageTwo extends StatelessWidget {
+  final int currentPage;
+  PageTwo(this.currentPage);
+
   @override
   Widget build(BuildContext context) {
     return SizedBox.expand(
       child: Stack(
         children: [
           Positioned(
-            left: 40,
-            top: 276,
-            child: SizedBox(
-              width: 272,
-              height: 384,
-              child: Image.asset(
-                'assets/images/106881.jpg',
-                fit: BoxFit.cover,
+            left: 64,
+            top: 112,
+            width: 256,
+            height: 528,
+            child: Container(
+              color: Colors.transparent,
+            ),
+          ),
+          Positioned(
+            bottom: 20,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                2,
+                (index) => Container(
+                  width: 8,
+                  height: 8,
+                  margin: EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: index == currentPage ? Colors.black : Colors.grey,
+                    shape: BoxShape.circle,
+                  ),
+                ),
               ),
             ),
           ),
