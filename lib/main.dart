@@ -4,17 +4,18 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'app_router.dart';
 import 'theme/app_theme.dart';
+import 'config/supabase_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // ── Supabase ─────────────────────────────────────────────
-  const supaUrl    = 'YOUR_SUPABASE_URL';
-  const supaKey    = 'YOUR_SUPABASE_ANON_KEY';
-  final hasValidCreds = supaUrl.startsWith('https://') && supaKey.startsWith('eyJ');
-  if (hasValidCreds) {
+  if (SupabaseConfig.isConfigured) {
     try {
-      await Supabase.initialize(url: supaUrl, anonKey: supaKey);
+      await Supabase.initialize(
+        url: SupabaseConfig.url,
+        anonKey: SupabaseConfig.anonKey,
+      );
     } catch (e) {
       debugPrint('Supabase init failed: $e');
     }
@@ -32,7 +33,7 @@ void main() async {
     debugPrint('Notifications init failed: $e');
   }
 
-  runApp(MyAppApp(supabaseReady: hasValidCreds));
+  runApp(MyAppApp(supabaseReady: SupabaseConfig.isConfigured));
 }
 
 class MyAppApp extends StatelessWidget {
@@ -60,7 +61,7 @@ class MyAppApp extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Color(0xFF9ca3af), fontSize: 14, height: 1.5)),
               const SizedBox(height: 8),
-              const Text('Settings → API → Project URL + anon key',
+              const Text('Settings -> API -> Project URL + anon key',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Color(0xFF6366f1), fontSize: 13)),
             ]),
