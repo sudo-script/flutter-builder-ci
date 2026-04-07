@@ -27,7 +27,7 @@ abstract class AppRouter {
     GoRoute(
       path: '/note_editor',
       name: 'NoteEditorScreen',
-      builder: (context, state) => NoteEditorScreen(),
+      builder: (context, state) => NoteEditorScreen(noteId: (state.extra as Map<String,dynamic>?)?['noteId'] as String?),
     ),
     GoRoute(
       path: '/tag_manager',

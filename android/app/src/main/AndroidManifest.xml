@@ -1,6 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.esd.sdd">
-    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="My App"
         android:name="${applicationName}"
@@ -22,5 +21,39 @@
             </intent-filter>
         </activity>
         <meta-data android:name="flutterEmbedding" android:value="2"/>
+
+        <!-- flutter_local_notifications: required for scheduled/exact alarms -->
+        <receiver android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>
+        <receiver android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
     </application>
+
+    <!-- Network -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Audio recording (voice notes) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- Notifications (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Exact alarm scheduling for reminders -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <!-- Boot receiver for rescheduling notifications after reboot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- Vibration -->
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <!-- Image picker: media access (Android 13+) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <!-- Image picker: legacy storage (Android 12 and below) -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
+    <!-- Camera for image capture -->
+    <uses-permission android:name="android.permission.CAMERA"/>
 </manifest>
