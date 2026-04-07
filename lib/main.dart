@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'app_router.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ── Local notifications ───────────────────────────────────
+  tz.initializeTimeZones();
+  const initSettings = InitializationSettings(
+    android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+    iOS: DarwinInitializationSettings(),
+  );
+  await FlutterLocalNotificationsPlugin().initialize(initSettings);
+
   runApp(const MyAppApp());
 }
 
@@ -16,8 +26,8 @@ class MyAppApp extends StatelessWidget {
       title: 'My App',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      darkTheme: AppTheme.light(),
-      themeMode: ThemeMode.light,
+      darkTheme: AppTheme.dark(),
+      themeMode: ThemeMode.system,
       routerConfig: AppRouter.router,
     );
   }
