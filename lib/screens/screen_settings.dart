@@ -4,246 +4,420 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({Key? key}) : super(key: key);
+
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _client = Supabase.instance.client;
-
-  bool   _darkMode    = false;
+  bool _darkMode = false;
   String _defaultColor = '#ffffff';
-  int    _fontSize    = 16;
-  String _sortBy      = 'Updated';
-  bool   _signing     = false;
-
-  static const _colorPalette = [
-    '#ffffff','#fef3c7','#dbeafe','#dcfce7',
-    '#fce7f3','#ede9fe','#fee2e2','#f3f4f6',
-  ];
+  int _fontSize = 16;
+  String _sortBy = 'Updated';
+  late SharedPreferences _prefs;
 
   @override
   void initState() {
     super.initState();
-    _loadPrefs();
+    _initPrefs();
   }
 
-  Future<void> _loadPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
+  Future<void> _initPrefs() async {
+    _prefs = await SharedPreferences.getInstance();
     setState(() {
-      _darkMode     = prefs.getBool('darkMode')     ?? false;
-      _defaultColor = prefs.getString('defaultColor') ?? '#ffffff';
-      _fontSize     = prefs.getInt('fontSize')      ?? 16;
-      _sortBy       = prefs.getString('sortBy')     ?? 'Updated';
+      _darkMode = _prefs.getBool('darkMode') ?? false;
+      _defaultColor = _prefs.getString('defaultColor') ?? '#ffffff';
+      _fontSize = _prefs.getInt('fontSize') ?? 16;
+      _sortBy = _prefs.getString('sortBy') ?? 'Updated';
     });
   }
 
-  Future<void> _setPref<T>(String key, T value) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (value is bool)   prefs.setBool(key, value);
-    if (value is String) prefs.setString(key, value);
-    if (value is int)    prefs.setInt(key, value);
+  Future<void> _toggleDarkMode(bool val) async {
+    setState(() {
+      _darkMode = val;
+    });
+    await _prefs.setBool('darkMode', val);
   }
 
-  Future<void> _signOut() async {
-    final ok = await showDialog<bool>(context: context,
+  Future<void> _pickDefaultColor() async {
+    final selected = await showDialog<String>(
+      context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Sign out?'),
-        content: const Text('You will be returned to the login screen.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sign Out', style: TextStyle(color: Colors.red))),
-        ]));
-    if (ok != true) return;
-    setState(() => _signing = true);
-    try {
-      await _client.auth.signOut();
-      if (mounted) context.go('/auth');
-    } catch (e) {
-      if (mounted) {
-        setState(() => _signing = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sign out failed: $e')));
-      }
+        title: const Text('Select Default Note Color'),
+        content: Wrap(
+          spacing: 8,
+          children: _palette
+              .map((c) => GestureDetector(
+                    onTap: () => Navigator.pop(ctx, c),
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: Color(int.parse(c.replaceFirst('#', '0xFF'))),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          width: _defaultColor == c ? 3 : 1,
+                          color: _defaultColor == c
+                              ? Colors.black87
+                              : Colors.grey.shade300,
+                        ),
+                      ),
+                    ),
+                  ))
+              .toList(),
+        ),
+      ),
+    );
+    if (selected != null && selected != _defaultColor) {
+      setState(() {
+        _defaultColor = selected;
+      });
+      await _prefs.setString('defaultColor', selected);
     }
   }
 
-  Widget _sectionLabel(String text) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 20, 0, 6),
-    child: Text(text, style: TextStyle(
-      fontSize: 10, fontWeight: FontWeight.bold,
-      color: Colors.grey.shade500, letterSpacing: 1.2)));
+  Future<void> _pickFontSize(int? val) async {
+    if (val == null) return;
+    setState(() {
+      _fontSize = val;
+    });
+    await _prefs.setInt('fontSize', val);
+  }
 
-  Widget _tile({required String title, Widget? trailing, VoidCallback? onTap, Color? textColor}) =>
-    ListTile(
-      title: Text(title, style: TextStyle(fontSize: 15, color: textColor)),
-      trailing: trailing,
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20));
+  Future<void> _pickSortBy(String? val) async {
+    if (val == null) return;
+    setState(() {
+      _sortBy = val;
+    });
+    await _prefs.setString('sortBy', val);
+  }
 
-  Widget _divider() => const Divider(height: 1, indent: 20);
+  final List<String> _palette = const [
+    '#ffffff',
+    '#fef3c7',
+    '#dbeafe',
+    '#dcfce7',
+    '#fce7f3',
+    '#ede9fe',
+    '#fee2e2',
+    '#f3f4f6',
+  ];
+
+  final List<int> _fontSizeOptions = const [12, 14, 16, 18, 20];
+  final List<String> _sortOptions = const ['Updated', 'Created', 'Title'];
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  Future<void> _signOut() async {
+    final should = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+    if (should == true) {
+      try {
+        await Supabase.instance.client.auth.signOut();
+      } catch (_) {}
+      context.go('/auth');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final user  = _client.auth.currentUser;
-    final email = user?.email ?? '';
-    final initials = email.isNotEmpty ? email[0].toUpperCase() : '?';
-    final memberSince = user?.createdAt != null
-      ? DateTime.tryParse(user!.createdAt)?.year.toString() ?? ''
-      : '';
+    final email = Supabase.instance.client.auth.currentUser?.email ?? 'user@gmail.com';
+    final firstLetter = email.isNotEmpty ? email[0].toUpperCase() : 'U';
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.bold)),
-        elevation: 0),
-      body: ListView(children: [
-        // Account
-        _sectionLabel('ACCOUNT'),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFe5e7eb))),
-          child: Row(children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: const Color(0xFF6366f1),
-              child: Text(initials,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white))),
-            const SizedBox(width: 14),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(email, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-              if (memberSince.isNotEmpty)
-                Text('Member since $memberSince',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF9ca3af))),
-            ])),
-          ])),
-        const SizedBox(height: 8),
-
-        // Preferences
-        _sectionLabel('PREFERENCES'),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFe5e7eb))),
-          child: Column(children: [
-            _tile(
-              title: 'Dark Mode',
-              trailing: Switch(
-                value: _darkMode,
-                onChanged: (v) {
-                  setState(() => _darkMode = v);
-                  _setPref('darkMode', v);
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            SizedBox(height: 54),
+            Text(
+              'Settings',
+              style: const TextStyle(
+                color: Color(0xFF111827),
+                fontSize: 22,
+              ),
+            ),
+            SizedBox(height: 16),
+            // Account Section
+            Container(
+              width: double.infinity,
+              color: const Color(0xFFFFFFFF),
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: const Color(0xFF6366F1),
+                    child: Text(
+                      firstLetter,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          email,
+                          style: const TextStyle(
+                            color: Color(0xFF111827),
+                            fontSize: 15,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        const Text(
+                          'Free plan · Member since Jan 2024',
+                          style: TextStyle(
+                            color: Color(0xFF9CA3AF),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            SizedBox(height: 8),
+            // Preferences Title
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'PREFERENCES',
+                  style: TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 8),
+            // Dark Mode Switch
+            Container(
+              width: double.infinity,
+              color: const Color(0xFFFFFFFF),
+              child: ListTile(
+                title: const Text(
+                  'Dark Mode',
+                  style: TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 15,
+                  ),
+                ),
+                trailing: Switch(
+                  value: _darkMode,
+                  onChanged: _toggleDarkMode,
+                ),
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            // Default Note Color
+            Container(
+              width: double.infinity,
+              color: const Color(0xFFFFFFFF),
+              child: ListTile(
+                title: const Text(
+                  'Default note color',
+                  style: TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 15,
+                  ),
+                ),
+                trailing: GestureDetector(
+                  onTap: _pickDefaultColor,
+                  child: CircleAvatar(
+                    backgroundColor: Color(int.parse(_defaultColor.replaceFirst('#', '0xFF'))),
+                    radius: 12,
+                  ),
+                ),
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            // Editor Font Size
+            Container(
+              width: double.infinity,
+              color: const Color(0xFFFFFFFF),
+              child: ListTile(
+                title: const Text(
+                  'Editor font size',
+                  style: TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 15,
+                  ),
+                ),
+                trailing: DropdownButton<int>(
+                  value: _fontSize,
+                  icon: const Icon(Icons.arrow_drop_down),
+                  underline: Container(),
+                  items: _fontSizeOptions
+                      .map(
+                        (val) => DropdownMenuItem(
+                          value: val,
+                          child: Text(val.toString()),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _pickFontSize,
+                ),
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            // Sort Notes By
+            Container(
+              width: double.infinity,
+              color: const Color(0xFFFFFFFF),
+              child: ListTile(
+                title: const Text(
+                  'Sort notes by',
+                  style: TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 15,
+                  ),
+                ),
+                trailing: DropdownButton<String>(
+                  value: _sortBy,
+                  icon: const Icon(Icons.arrow_drop_down),
+                  underline: Container(),
+                  items: _sortOptions
+                      .map(
+                        (opt) => DropdownMenuItem(
+                          value: opt,
+                          child: Text(opt),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _pickSortBy,
+                ),
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            // Storage Section
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'STORAGE',
+                  style: TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              color: const Color(0xFFFFFFFF),
+              child: ListTile(
+                title: const Text(
+                  'iCloud / Google Drive backup',
+                  style: TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 15,
+                  ),
+                ),
+                trailing: Text(
+                  'Off',
+                  style: TextStyle(
+                    color: Color(0xFF9CA3AF),
+                    fontSize: 13,
+                  ),
+                ),
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Coming Soon')),
+                  );
                 },
-                activeColor: const Color(0xFF6366f1))),
-            _divider(),
-            _tile(
-              title: 'Default note colour',
-              trailing: GestureDetector(
-                onTap: () => showDialog(context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Default colour'),
-                    content: Wrap(spacing: 10, runSpacing: 10, children: _colorPalette.map((c) {
-                      final color = Color(int.parse(c.replaceFirst('#', '0xFF')));
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() => _defaultColor = c);
-                          _setPref('defaultColor', c);
-                          Navigator.pop(ctx);
-                        },
-                        child: Container(width: 40, height: 40,
-                          decoration: BoxDecoration(color: color, shape: BoxShape.circle,
-                            border: Border.all(
-                              color: _defaultColor == c ? Colors.black54 : Colors.grey.shade300,
-                              width: _defaultColor == c ? 3 : 1))));
-                    }).toList()),
-                    actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))])),
-                child: Container(width: 28, height: 28,
-                  decoration: BoxDecoration(
-                    color: Color(int.parse(_defaultColor.replaceFirst('#', '0xFF'))),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.grey.shade300))))),
-            _divider(),
-            _tile(
-              title: 'Editor font size',
-              trailing: DropdownButton<int>(
-                value: _fontSize,
-                underline: const SizedBox(),
-                items: [12, 14, 16, 18, 20].map((s) =>
-                  DropdownMenuItem(value: s, child: Text('$s'))).toList(),
-                onChanged: (v) {
-                  if (v == null) return;
-                  setState(() => _fontSize = v);
-                  _setPref('fontSize', v);
-                })),
-            _divider(),
-            _tile(
-              title: 'Sort notes by',
-              trailing: DropdownButton<String>(
-                value: _sortBy,
-                underline: const SizedBox(),
-                items: ['Updated', 'Created', 'Title'].map((s) =>
-                  DropdownMenuItem(value: s, child: Text(s))).toList(),
-                onChanged: (v) {
-                  if (v == null) return;
-                  setState(() => _sortBy = v);
-                  _setPref('sortBy', v);
-                })),
-          ])),
-        const SizedBox(height: 8),
-
-        // Storage
-        _sectionLabel('STORAGE'),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFe5e7eb))),
-          child: _tile(
-            title: 'Cloud backup',
-            trailing: TextButton(
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Coming soon!'))),
-              child: const Text('Off', style: TextStyle(color: Color(0xFF9ca3af)))))),
-        const SizedBox(height: 8),
-
-        // About
-        _sectionLabel('ABOUT'),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFe5e7eb))),
-          child: _tile(
-            title: 'Version',
-            trailing: const Text('1.0.0', style: TextStyle(color: Color(0xFF9ca3af))))),
-        const SizedBox(height: 24),
-
-        // Sign out
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SizedBox(
-            width: double.infinity, height: 52,
-            child: ElevatedButton(
-              onPressed: _signing ? null : _signOut,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFfee2e2),
-                foregroundColor: Colors.red,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              child: _signing
-                ? const SizedBox(width: 20, height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red))
-                : const Text('Sign Out', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))))),
-        const SizedBox(height: 40),
-      ]),
-    );
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            // About Section
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'ABOUT',
+                  style: TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              color: const Color(0xFFFFFFFF),
+              child: ListTile(
+                title: const Text(
+                  'Version',
+                  style: TextStyle(
+                    color: Color(0xFF111827),
+                    fontSize: 15,
+                  ),
+                ),
+                trailing: const Text(
+                  '1.0.0',
+                  style: TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            SizedBox(height: 16),
+            // Sign Out button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEF4444),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: _signOut,
+                  child: const Text(
+                    'Sign Out',
+                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 32),
+          ],
+        ),
+      ),
   }
 }

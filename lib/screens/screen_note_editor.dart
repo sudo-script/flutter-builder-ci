@@ -1,370 +1,544 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/flutter_quill.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_quill/flutter_quill.dart' hide Text;
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/timezone.dart' as tz;
 
 class NoteEditorScreen extends StatefulWidget {
   final String? noteId;
-  const NoteEditorScreen({super.key, this.noteId});
+  const NoteEditorScreen({Key? key, this.noteId}) : super(key: key);
+
   @override
   State<NoteEditorScreen> createState() => _NoteEditorScreenState();
 }
 
 class _NoteEditorScreenState extends State<NoteEditorScreen> {
-  final _client      = Supabase.instance.client;
-  final _titleCtrl   = TextEditingController();
-  final _picker      = ImagePicker();
-  final _notifPlugin = FlutterLocalNotificationsPlugin();
-  final _uuid        = const Uuid();
+  late final String? _noteId;
+  bool _isExisting = false;
 
-  late QuillController _quill;
-  bool   _loading   = true;
-  bool   _saving    = false;
-  String _color     = '#ffffff';
-  bool   _isPinned  = false;
-  String? _audioPath;
-  DateTime? _reminder;
-  List<Map<String, dynamic>> _allTags     = [];
-  List<Map<String, dynamic>> _noteTags    = [];
-  Map<String, dynamic>?      _existingNote;
+  final TextEditingController _titleController = TextEditingController();
+  late QuillController _quillController;
+  String _backgroundColor = '#ffffff';
+  bool _isPinned = false;
+  DateTime? _reminderAt;
+  final List<String> _selectedTagIds = [];
+  List<Map<String, dynamic>> _allTags = [];
+  final ImagePicker _picker = ImagePicker();
+  FlutterLocalNotificationsPlugin? _flutterLocalNotificationsPlugin;
 
-  static const _palette = [
-    '#ffffff','#fef3c7','#dbeafe','#dcfce7',
-    '#fce7f3','#ede9fe','#fee2e2','#f3f4f6',
-  ];
+  bool _isRecording = false;
+  bool _isPlaying = false;
+  String? _audioFilePath;
+  RecorderController? _recorderController;
+  PlayerController? _playerController;
+
+  RealtimeChannel? _channel;
 
   @override
   void initState() {
     super.initState();
-    _quill = QuillController.basic();
-    _init();
+    _noteId = widget.noteId;
+    _quillController = QuillController.basic();
+    _initNotifications();
+    _fetchAllTags();
+    if (_noteId != null) {
+      _isExisting = true;
+      _loadNote();
+      _subscribeRealtime();
+    }
   }
 
-  Future<void> _init() async {
-    await _fetchAllTags();
-    if (widget.noteId != null) await _loadNote();
-    if (mounted) setState(() => _loading = false);
+  Future<void> _initNotifications() async {
+    _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    final androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    final initSettings = InitializationSettings(android: androidSettings);
+    await _flutterLocalNotificationsPlugin?.initialize(initSettings);
   }
 
-  Future<void> _fetchAllTags() async {
-    try {
-      final data = await _client.from('tags')
-        .select('id, name, color')
-        .eq('user_id', _client.auth.currentUser!.id);
-      if (mounted) setState(() => _allTags = List<Map<String, dynamic>>.from(data as List));
-    } catch (_) {}
+  void _subscribeRealtime() {
+    _channel = Supabase.instance.client.channel('public:notes')
+      .on(PostgresChangeEvent.all, (payload, refs) {
+        if (payload?.new_?['id'] == _noteId ||
+            payload?.old_?['id'] == _noteId) {
+          _loadNote();
+        }
+      }, null).subscribe();
   }
 
   Future<void> _loadNote() async {
     try {
-      final data = await _client.from('notes')
-        .select()
-        .eq('id', widget.noteId!)
-        .single();
-      _existingNote = data;
-      _titleCtrl.text = data['title'] as String? ?? '';
-      _color    = data['color']     as String? ?? '#ffffff';
-      _isPinned = data['is_pinned'] == true;
-      _audioPath = data['audio_path'] as String?;
-      if (data['reminder_at'] != null) {
-        _reminder = DateTime.tryParse(data['reminder_at'].toString());
-      }
-      if (data['content'] != null) {
-        try {
-          _quill = QuillController(
-            document: Document.fromJson(jsonDecode(data['content'] as String)),
-            selection: const TextSelection.collapsed(offset: 0));
-        } catch (_) {}
-      }
-      // Load tags for this note
-      final tagData = await _client.from('note_tags')
-        .select('tag_id, tags(id, name, color)')
-        .eq('note_id', widget.noteId!);
-      if (mounted) setState(() =>
-        _noteTags = (tagData as List).map((e) => e['tags'] as Map<String, dynamic>).toList());
-    } catch (_) {}
-  }
-
-  Future<void> _save() async {
-    setState(() => _saving = true);
-    final title     = _titleCtrl.text.trim();
-    final content   = jsonEncode(_quill.document.toDelta().toJson());
-    final plainText = _quill.document.toPlainText().trim();
-    final userId    = _client.auth.currentUser!.id;
-
-    try {
-      String noteId;
-      if (widget.noteId != null) {
-        await _client.from('notes').update({
-          'title': title.isEmpty ? 'Untitled' : title,
-          'content': content,
-          'plain_text': plainText,
-          'color': _color,
-          'is_pinned': _isPinned,
-          'reminder_at': _reminder?.toIso8601String(),
-          'audio_path': _audioPath,
-        }).eq('id', widget.noteId!);
-        noteId = widget.noteId!;
-      } else {
-        final res = await _client.from('notes').insert({
-          'title': title.isEmpty ? 'Untitled' : title,
-          'content': content,
-          'plain_text': plainText,
-          'color': _color,
-          'is_pinned': _isPinned,
-          'user_id': userId,
-          'reminder_at': _reminder?.toIso8601String(),
-          'audio_path': _audioPath,
-        }).select('id').single();
-        noteId = res['id'] as String;
-      }
-      if (_reminder != null) _scheduleReminder(noteId, title, _reminder!);
-      if (mounted) context.go('/notes_list');
+      final data = await Supabase.instance.client
+          .from('notes')
+          .select('*, note_tags(tag_id, tags(id, name, color))')
+          .eq('id', _noteId)
+          .single();
+      final note = data as Map<String, dynamic>;
+      setState(() {
+        _titleController.text = note['title'] ?? '';
+        final content = note['content'] as String?;
+        if (content != null && content.isNotEmpty) {
+          _quillController = QuillController(
+            document: Document.fromJson(jsonDecode(content)),
+            selection: const TextSelection.collapsed(offset: 0),
+          );
+        } else {
+          _quillController = QuillController.basic();
+        }
+        _backgroundColor = note['color'] ?? '#ffffff';
+        _isPinned = note['is_pinned'] ?? false;
+        final ts = note['reminder_at'];
+        _reminderAt = ts != null ? DateTime.parse(ts) : null;
+        final tags = note['note_tags'] as List<dynamic>?;
+        _selectedTagIds.clear();
+        tags?.forEach((t) {
+          final tagId = t['tag_id'] as String?;
+          if (tagId != null) _selectedTagIds.add(tagId);
+        });
+      });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Save failed: $e'), backgroundColor: Colors.red));
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
+      // Handle error
     }
   }
 
-  void _scheduleReminder(String id, String title, DateTime when) {
-    if (when.isBefore(DateTime.now())) return;
-    _notifPlugin.zonedSchedule(
-      id.hashCode.abs() % 100000,
-      'Reminder: $title', '',
-      tz.TZDateTime.from(when, tz.local),
-      const NotificationDetails(
-        android: AndroidNotificationDetails('notes_reminder', 'Note Reminders',
-          importance: Importance.high, priority: Priority.high),
-        iOS: DarwinNotificationDetails()),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-        UILocalNotificationDateInterpretation.absoluteTime);
-  }
-
-  Future<void> _pickImage() async {
-    final file = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (file == null) return;
+  Future<void> _fetchAllTags() async {
     try {
-      final bytes = await file.readAsBytes();
-      final path  = 'images/${_uuid.v4()}.jpg';
-      await _client.storage.from('note-images').uploadBinary(path, bytes,
-        fileOptions: FileOptions(contentType: 'image/jpeg'));
-      final url = _client.storage.from('note-images').getPublicUrl(path);
-      final index = _quill.selection.baseOffset;
-      _quill.document.insert(index, BlockEmbed.image(url));
-      setState(() {});
+      final data = await Supabase.instance.client
+          .from('tags')
+          .select('id, name, color')
+          .order('created_at', ascending: true);
+      setState(() {
+        _allTags = List<Map<String, dynamic>>.from(data);
+      });
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Upload failed: $e')));
+      // Handle error
     }
-  }
-
-  Future<void> _pickReminder() async {
-    final now  = DateTime.now();
-    final date = await showDatePicker(context: context,
-      initialDate: now.add(const Duration(hours: 1)),
-      firstDate: now, lastDate: now.add(const Duration(days: 365)));
-    if (date == null) return;
-    final time = await showTimePicker(context: context,
-      initialTime: TimeOfDay.fromDateTime(now.add(const Duration(hours: 1))));
-    if (time == null) return;
-    setState(() => _reminder = DateTime(date.year, date.month, date.day, time.hour, time.minute));
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Reminder set for ${_reminder.toString().substring(0, 16)}')));
-  }
-
-  Future<void> _toggleTag(Map<String, dynamic> tag) async {
-    final tagId  = tag['id'] as String;
-    final noteId = widget.noteId ?? '';
-    final has    = _noteTags.any((t) => t['id'] == tagId);
-    setState(() {
-      if (has) _noteTags.removeWhere((t) => t['id'] == tagId);
-      else     _noteTags.add(tag);
-    });
-    if (noteId.isEmpty) return;
-    try {
-      if (has) {
-        await _client.from('note_tags')
-          .delete().eq('note_id', noteId).eq('tag_id', tagId);
-      } else {
-        await _client.from('note_tags')
-          .insert({'note_id': noteId, 'tag_id': tagId});
-      }
-    } catch (_) {}
-  }
-
-  void _showTagPicker() {
-    showModalBottomSheet(context: context, isScrollControlled: true,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.5, maxChildSize: 0.9, minChildSize: 0.3, expand: false,
-        builder: (_, scrollCtrl) => Column(children: [
-          const Padding(padding: EdgeInsets.all(16),
-            child: Text('Select Tags', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold))),
-          Expanded(child: ListView.builder(
-            controller: scrollCtrl, itemCount: _allTags.length,
-            itemBuilder: (__, i) {
-              final t   = _allTags[i];
-              final sel = _noteTags.any((nt) => nt['id'] == t['id']);
-              final c   = Color(int.parse((t['color'] as String).replaceFirst('#', '0xFF')));
-              return ListTile(
-                leading: CircleAvatar(backgroundColor: c, radius: 12),
-                title: Text(t['name'] as String),
-                trailing: sel ? const Icon(Icons.check, color: Color(0xFF6366f1)) : null,
-                onTap: () { _toggleTag(t); Navigator.pop(ctx); });
-            })),
-          TextButton(onPressed: () => context.go('/tag_manager'),
-            child: const Text('Manage Tags →')),
-          const SizedBox(height: 16),
-        ])));
   }
 
   @override
   void dispose() {
-    _titleCtrl.dispose();
-    _quill.dispose();
+    _titleController.dispose();
+    _quillController.dispose();
+    _recorderController?.dispose();
+    _playerController?.dispose();
+    if (_channel != null) {
+      Supabase.instance.client.removeChannel(_channel!);
+    }
     super.dispose();
+  }
+
+  int _wordCount(String text) {
+    if (text.trim().isEmpty) return 0;
+    return text.trim().split(RegExp(r'\s+')).length;
+  }
+
+  Future<void> _pickImage() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+    final file = File(picked.path);
+    final bytes = await file.readAsBytes();
+    final path = 'note-images/${const Uuid().v4()}.jpg';
+    try {
+      await Supabase.instance.client.storage
+          .from('note-images')
+          .uploadBinary(path, bytes,
+              fileOptions: const FileOptions(contentType: 'image/jpeg'));
+      final url = Supabase.instance.client.storage
+          .from('note-images')
+          .getPublicUrl(path);
+      final delta = Delta()
+        ..insert({'image': url})
+        ..insert('\n');
+      _quillController.document.compose(
+          delta, _quillController.selection, ChangeSource.LOCAL);
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  Future<void> _pickReminder() async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _reminderAt ?? now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (date == null) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_reminderAt ?? now),
+    );
+    if (time == null) return;
+    final selected = DateTime(
+        date.year, date.month, date.day, time.hour, time.minute);
+    setState(() {
+      _reminderAt = selected;
+    });
+    await _scheduleNotification(selected);
+  }
+
+  Future<void> _scheduleNotification(DateTime at) async {
+    if (_flutterLocalNotificationsPlugin == null) return;
+    const androidDetails = AndroidNotificationDetails(
+      'reminder_channel',
+      'Reminder',
+      channelDescription: 'Notification channel for note reminders',
+    );
+    final details = NotificationDetails(android: androidDetails);
+    await _flutterLocalNotificationsPlugin!
+        .zonedSchedule(
+          0,
+          'Note Reminder',
+          _titleController.text,
+          at,
+          details,
+          androidAllowWhileIdle: true,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+        )
+        .then((value) => null)
+        .catchError((e) => null);
+  }
+
+  Future<void> _toggleRecording() async {
+    if (!_isRecording) {
+      await _startRecording();
+    } else {
+      await _stopRecording();
+    }
+  }
+
+  Future<void> _startRecording() async {
+    _recorderController ??= RecorderController()
+      ..androidEncoder = AndroidEncoder.aac
+      ..androidOutputFormat = AndroidOutputFormat.mpeg4
+      ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
+      ..sampleRate = 44100;
+    final appDocDir = await getApplicationDocumentsDirectory();
+    final path =
+        '${appDocDir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    await _recorderController!.record(path: path);
+    setState(() {
+      _isRecording = true;
+      _audioFilePath = path;
+    });
+  }
+
+  Future<void> _stopRecording() async {
+    final filePath = await _recorderController!.stop();
+    setState(() {
+      _isRecording = false;
+      _audioFilePath = filePath;
+    });
+    await _uploadAudio(filePath);
+  }
+
+  Future<void> _uploadAudio(String path) async {
+    try {
+      final file = File(path);
+      final bytes = await file.readAsBytes();
+      final uploadPath = 'note-audio/${const Uuid().v4()}.m4a';
+      await Supabase.instance.client.storage
+          .from('note-audio')
+          .uploadBinary(uploadPath, bytes,
+              fileOptions: const FileOptions(contentType: 'audio/m4a'));
+      final url = Supabase.instance.client.storage
+          .from('note-audio')
+          .getPublicUrl(uploadPath);
+      await Supabase.instance.client
+          .from('attachments')
+          .insert({
+            'note_id': _noteId,
+            'url': url,
+            'type': 'audio',
+            'size_kb': await file.length() ~/ 1024
+          })
+          
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  Future<void> _saveNote() async {
+    final title = _titleController.text.trim();
+    final contentJson = jsonEncode(_quillController.document.toDelta().toJson());
+    final plainText = _quillController.document.toPlainText();
+    final color = _backgroundColor;
+    final isPinned = _isPinned;
+    final reminderAtStr = _reminderAt?.toIso8601String();
+
+    try {
+      if (_isExisting && _noteId != null) {
+        await Supabase.instance.client
+            .from('notes')
+            .update({
+              'title': title,
+              'content': contentJson,
+              'plain_text': plainText,
+              'color': color,
+              'is_pinned': isPinned,
+              'reminder_at': reminderAtStr
+            })
+            .eq('id', _noteId)
+            
+        await Supabase.instance.client
+            .from('note_tags')
+            .delete()
+            .eq('note_id', _noteId)
+            
+        for (var tagId in _selectedTagIds) {
+          await Supabase.instance.client
+              .from('note_tags')
+              .insert({'note_id': _noteId, 'tag_id': tagId})
+              
+        }
+      } else {
+        final create = await Supabase.instance.client
+            .from('notes')
+            .insert({
+              'title': title,
+              'content': contentJson,
+              'plain_text': plainText,
+              'color': color,
+              'is_pinned': isPinned,
+              'reminder_at': reminderAtStr,
+              'user_id':
+                  Supabase.instance.client.auth.currentUser?.id?.toString()
+            })
+            
+        final inserted = create.data[0] as Map<String, dynamic>;
+        final newId = inserted['id'];
+        for (var tagId in _selectedTagIds) {
+          await Supabase.instance.client
+              .from('note_tags')
+              .insert({'note_id': newId, 'tag_id': tagId})
+              
+        }
+      }
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  Future<void> _pickTag() async {
+    final selected = await showModalBottomSheet<String>(
+        context: context,
+        builder: (context) {
+          return ListView.builder(
+            itemCount: _allTags.length,
+            itemBuilder: (context, index) {
+              final tag = _allTags[index];
+              final id = tag['id'] as String;
+              return ListTile(
+                title: Text(tag['name'] as String),
+                leading: CircleAvatar(
+                  backgroundColor: Color(
+                      int.parse('${tag['color']}'.replaceFirst('#', '0xFF'))),
+                ),
+                onTap: () => Navigator.pop(context, id),
+              );
+            },
+          );
+        });
+    if (selected != null && !_selectedTagIds.contains(selected)) {
+      setState(() {
+        _selectedTagIds.add(selected);
+      });
+    }
+  }
+
+  Widget _buildTagChip(Map<String, dynamic> tag) {
+    final id = tag['id'] as String;
+    final isSelected = _selectedTagIds.contains(id);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: FilterChip(
+        label: Text(tag['name'] as String),
+        selected: isSelected,
+        onSelected: (v) {
+          setState(() {
+            if (v) {
+              _selectedTagIds.add(id);
+            } else {
+              _selectedTagIds.remove(id);
+            }
+          });
+        },
+        backgroundColor:
+            Color(int.parse('${tag['color']}'.replaceFirst('#', '0xFF')))
+                .withOpacity(0.2),
+        selectedColor:
+            Color(int.parse('${tag['color']}').toInt()).withOpacity(0.5),
+      ),
   }
 
   @override
   Widget build(BuildContext context) {
-    final bg = Color(int.parse(_color.replaceFirst('#', '0xFF')));
+    final plainText = _quillController.document.toPlainText();
+    final wordCount = _wordCount(plainText);
+
     return Scaffold(
-      backgroundColor: bg,
-      appBar: AppBar(
-        backgroundColor: bg, elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: _save),
-        title: Text(_isPinned ? '📌 Pinned' : '',
-          style: const TextStyle(fontSize: 13, color: Color(0xFF6b7280))),
-        actions: [
-          IconButton(icon: Icon(_isPinned ? Icons.push_pin : Icons.push_pin_outlined),
-            onPressed: () => setState(() => _isPinned = !_isPinned)),
-          if (_saving)
-            const Padding(padding: EdgeInsets.all(14),
-              child: SizedBox(width: 20, height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2)))
-          else
-            TextButton(onPressed: _save,
-              child: const Text('Save', style: TextStyle(
-                color: Color(0xFF6366f1), fontWeight: FontWeight.bold, fontSize: 15))),
-        ]),
-      body: _loading
-        ? const Center(child: CircularProgressIndicator())
-        : Column(children: [
+      backgroundColor: Color(int.parse(_backgroundColor.replaceFirst('#', '0xFF'))),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
+              height: 60,
+              color: Colors.white,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () async {
+                      await _saveNote();
+                      context.go('/notes_list');
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(_isPinned ? Icons.push_pin : Icons.push_pin_outlined),
+                    onPressed: () {
+                      setState(() {
+                        _isPinned = !_isPinned;
+                      });
+                    },
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: _titleController,
+                      style: const TextStyle(
+                          fontSize: 24, fontWeight: FontWeight.bold),
+                      decoration: const InputDecoration(
+                          hintText: 'Title',
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 8)),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _saveNote,
+                    child: const Text('Save',
+                        style: TextStyle(color: Colors.white)),
+                  ),
+                ],
+              ),
+            ),
             // Color picker
             Container(
-              height: 48, color: bg,
+              height: 60,
+              color: Colors.grey[200],
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                itemCount: _palette.length,
-                itemBuilder: (_, i) {
-                  final c = _palette[i];
-                  final sel = _color == c;
+                itemCount: 8,
+                itemBuilder: (_, index) {
+                  final col = _palette[index];
                   return GestureDetector(
-                    onTap: () => setState(() => _color = c),
+                    onTap: () {
+                      setState(() {
+                        _backgroundColor = col;
+                      });
+                    },
                     child: Container(
-                      width: 30, height: 30, margin: const EdgeInsets.only(right: 8),
+                      width: 40,
+                      height: 40,
+                      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                       decoration: BoxDecoration(
-                        color: Color(int.parse(c.replaceFirst('#', '0xFF'))),
+                        color: Color(int.parse(col.replaceFirst('#', '0xFF'))),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: sel ? Colors.black54 : Colors.grey.shade300,
-                          width: sel ? 3 : 1))));
-                })),
-            // Title
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: TextField(
-                controller: _titleCtrl,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
-                decoration: const InputDecoration(
-                  hintText: 'Title', border: InputBorder.none,
-                  hintStyle: TextStyle(color: Color(0xFF9ca3af))),
-                textCapitalization: TextCapitalization.sentences)),
-            const Divider(height: 1),
-            // Quill toolbar
-            QuillSimpleToolbar(
-              controller: _quill,
-              configurations: const QuillSimpleToolbarConfigurations()),
-            const Divider(height: 1),
-            // Editor body
+                            width: _backgroundColor == col ? 3 : 1,
+                            color: _backgroundColor == col
+                                ? Colors.black87
+                                : Colors.grey.shade300),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            // Editor
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: QuillEditor.basic(
-                  controller: _quill,
-                  configurations: const QuillEditorConfigurations(
-                    placeholder: 'Start typing...')))),
-            // Tags row
-            if (_noteTags.isNotEmpty || true)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                color: bg,
-                child: Row(children: [
-                  Expanded(child: Wrap(spacing: 6, children: [
-                    ..._noteTags.map((t) {
-                      final c = Color(int.parse((t['color'] as String).replaceFirst('#', '0xFF')));
-                      return Chip(
-                        label: Text(t['name'] as String, style: const TextStyle(fontSize: 11)),
-                        backgroundColor: c.withOpacity(0.25),
-                        deleteIcon: const Icon(Icons.close, size: 13),
-                        onDeleted: () => _toggleTag(t),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        padding: EdgeInsets.zero);
-                    }),
-                    ActionChip(
-                      label: const Text('+ Tag', style: TextStyle(fontSize: 11)),
-                      onPressed: _showTagPicker,
-                      backgroundColor: Colors.transparent,
-                      side: const BorderSide(color: Color(0xFFd1d5db)),
-                      padding: EdgeInsets.zero,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                  ])),
-                ])),
-            // Bottom toolbar
+              child: Column(
+                children: [
+                  QuillToolbar.basic(controller: _quillController),
+                  Expanded(
+                    child: QuillEditor.basic(
+                        controller: _quillController,
+                        readOnly: false),
+                  ),
+                ],
+              ),
+            ),
+            // Tags and actions
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: bg, border: Border(top: BorderSide(color: Colors.grey.shade200))),
-              child: Row(children: [
-                _toolBtn(Icons.image_outlined, Colors.blue, _pickImage),
-                const SizedBox(width: 8),
-                _toolBtn(Icons.alarm_add_outlined, Colors.amber, _pickReminder),
-                if (_reminder != null) Padding(
-                  padding: const EdgeInsets.only(left: 6),
-                  child: Chip(
-                    label: Text('⏰ ${_reminder.toString().substring(0, 16)}',
-                      style: const TextStyle(fontSize: 10)),
-                    deleteIcon: const Icon(Icons.close, size: 12),
-                    onDeleted: () => setState(() => _reminder = null),
-                    padding: EdgeInsets.zero,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap)),
-                const Spacer(),
-                Text('${_quill.document.toPlainText().trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length} words',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF9ca3af))),
-              ])),
-          ]),
-    );
+              height: 80,
+              color: Colors.grey[200],
+              child: Column(
+                children: [
+                  // Tag chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _allTags
+                          .map((t) => _buildTagChip(t))
+                          .toList()
+                            ..add(
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                child: ElevatedButton.icon(
+                                  onPressed: _pickTag,
+                                  icon: const Icon(Icons.add),
+                                  label: const Text('+ Tag'),
+                                ),
+                              ),
+                            ),
+                    ),
+                  ),
+                  // Bottom toolbar
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.image),
+                        onPressed: _pickImage,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.alarm),
+                        onPressed: _pickReminder,
+                      ),
+                      IconButton(
+                        icon: Icon(_isRecording
+                            ? Icons.stop
+                            : (_isPlaying ? Icons.pause : Icons.mic)),
+                        onPressed: _toggleRecording,
+                      ),
+                      const Spacer(),
+                      Text('$wordCount words',
+                          style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
   }
 
-  Widget _toolBtn(IconData icon, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 36, height: 36,
-        decoration: BoxDecoration(color: color.withOpacity(0.15), shape: BoxShape.circle),
-        child: Icon(icon, color: color, size: 18)));
-  }
+  final List<String> _palette = [
+    '#ffffff',
+    '#fef3c7',
+    '#dbeafe',
+    '#dcfce7',
+    '#fce7f3',
+    '#ede9fe',
+    '#fee2e2',
+    '#f3f4f6'
+  ];
 }
