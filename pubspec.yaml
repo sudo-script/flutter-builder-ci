@@ -1,4 +1,4 @@
-name: dfdd
+name: ssa
 description: "My App - built with Flutter Builder"
 publish_to: none
 version: 1.0.0+1
@@ -23,6 +23,7 @@ dependencies:
   http: ^1.2.2
 
   # Supabase backend
+  supabase_flutter: ^2.5.0
 
   # Rich text editor (notes core)
   flutter_quill: ^10.8.5

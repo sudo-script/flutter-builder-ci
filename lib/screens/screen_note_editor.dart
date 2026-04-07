@@ -158,7 +158,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       final bytes = await file.readAsBytes();
       final path  = 'images/${_uuid.v4()}.jpg';
       await _client.storage.from('note-images').uploadBinary(path, bytes,
-        fileOptions: const FileOptions(contentType: 'image/jpeg'));
+        fileOptions: FileOptions(contentType: 'image/jpeg'));
       final url = _client.storage.from('note-images').getPublicUrl(path);
       final index = _quill.selection.baseOffset;
       _quill.document.insert(index, BlockEmbed.image(url));
@@ -297,10 +297,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             // Quill toolbar
             QuillSimpleToolbar(
               controller: _quill,
-              config: const QuillSimpleToolbarConfig(
-                showFontFamily: false, showFontSize: false,
-                showBackgroundColorButton: false, showDirection: false,
-                showSearchButton: false, showSubscript: false, showSuperscript: false)),
+              configurations: const QuillSimpleToolbarConfigurations()),
             const Divider(height: 1),
             // Editor body
             Expanded(
@@ -308,7 +305,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: QuillEditor.basic(
                   controller: _quill,
-                  config: const QuillEditorConfig(placeholder: 'Start typing…')))),
+                  configurations: const QuillEditorConfigurations(
+                    placeholder: 'Start typing...')))),
             // Tags row
             if (_noteTags.isNotEmpty || true)
               Container(
