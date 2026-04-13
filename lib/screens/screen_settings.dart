@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -16,84 +16,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _fontSize = 16;
   String _sortBy = 'Updated';
   late SharedPreferences _prefs;
+  late final SupabaseClient _client;
 
-  @override
-  void initState() {
-    super.initState();
-    _initPrefs();
-  }
-
-  Future<void> _initPrefs() async {
-    _prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _darkMode = _prefs.getBool('darkMode') ?? false;
-      _defaultColor = _prefs.getString('defaultColor') ?? '#ffffff';
-      _fontSize = _prefs.getInt('fontSize') ?? 16;
-      _sortBy = _prefs.getString('sortBy') ?? 'Updated';
-    });
-  }
-
-  Future<void> _toggleDarkMode(bool val) async {
-    setState(() {
-      _darkMode = val;
-    });
-    await _prefs.setBool('darkMode', val);
-  }
-
-  Future<void> _pickDefaultColor() async {
-    final selected = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Select Default Note Color'),
-        content: Wrap(
-          spacing: 8,
-          children: _palette
-              .map((c) => GestureDetector(
-                    onTap: () => Navigator.pop(ctx, c),
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: Color(int.parse(c.replaceFirst('#', '0xFF'))),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          width: _defaultColor == c ? 3 : 1,
-                          color: _defaultColor == c
-                              ? Colors.black87
-                              : Colors.grey.shade300,
-                        ),
-                      ),
-                    ),
-                  ))
-              .toList(),
-        ),
-      ),
-    );
-    if (selected != null && selected != _defaultColor) {
-      setState(() {
-        _defaultColor = selected;
-      });
-      await _prefs.setString('defaultColor', selected);
-    }
-  }
-
-  Future<void> _pickFontSize(int? val) async {
-    if (val == null) return;
-    setState(() {
-      _fontSize = val;
-    });
-    await _prefs.setInt('fontSize', val);
-  }
-
-  Future<void> _pickSortBy(String? val) async {
-    if (val == null) return;
-    setState(() {
-      _sortBy = val;
-    });
-    await _prefs.setString('sortBy', val);
-  }
-
-  final List<String> _palette = const [
+  final List<String> _palette = [
     '#ffffff',
     '#fef3c7',
     '#dbeafe',
@@ -101,323 +26,307 @@ class _SettingsScreenState extends State<SettingsScreen> {
     '#fce7f3',
     '#ede9fe',
     '#fee2e2',
-    '#f3f4f6',
+    '#f3f4f6'
   ];
 
-  final List<int> _fontSizeOptions = const [12, 14, 16, 18, 20];
-  final List<String> _sortOptions = const ['Updated', 'Created', 'Title'];
+  final List<int> _fontSizes = [12, 14, 16, 18, 20];
+  final List<String> _sortOptions = ['Updated', 'Created', 'Title'];
+
+  @override
+  void initState() {
+    super.initState();
+    _client = Supabase.instance.client;
+    _loadPrefs();
+  }
+
+  Future<void> _loadPrefs() async {
+    _prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _darkMode = _prefs.getBool('darkMode') ?? false;
+      _defaultColor = _prefs.getString('defaultColor') ?? _palette[0];
+      _fontSize = _prefs.getInt('fontSize') ?? 16;
+      _sortBy = _prefs.getString('sortBy') ?? 'Updated';
+    });
+  }
+
+  Future<void> _setDarkMode(bool value) async {
+    await _prefs.setBool('darkMode', value);
+    setState(() {
+      _darkMode = value;
+    });
+  }
+
+  Future<void> _setDefaultColor(String color) async {
+    await _prefs.setString('defaultColor', color);
+    setState(() {
+      _defaultColor = color;
+    });
+  }
+
+  Future<void> _setFontSize(int size) async {
+    await _prefs.setInt('fontSize', size);
+    setState(() {
+      _fontSize = size;
+    });
+  }
+
+  Future<void> _setSortBy(String value) async {
+    await _prefs.setString('sortBy', value);
+    setState(() {
+      _sortBy = value;
+    });
+  }
+
+  Future<void> _signOut() async {
+    try {
+      await _client.auth.signOut();
+      if (!mounted) return;
+      context.go('/auth');
+    } catch (e) {
+      // Handle error if needed
+    }
+  }
+
+  Future<void> _showColorPicker() async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Select Default Color'),
+        content: Wrap(
+          spacing: 8,
+          children: _palette.map((c) {
+            final color = Color(int.parse(c.replaceFirst('#', '0xFF')));
+            return GestureDetector(
+              onTap: () {
+                _setDefaultColor(c);
+                Navigator.of(context).pop();
+              },
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    width: _defaultColor == c ? 3 : 1,
+                    color: _defaultColor == c ? Colors.black87 : Colors.grey.shade300,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      );
+  }
 
   @override
   void dispose() {
     super.dispose();
   }
 
-  Future<void> _signOut() async {
-    final should = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
-    );
-    if (should == true) {
-      try {
-        await Supabase.instance.client.auth.signOut();
-      } catch (_) {}
-      context.go('/auth');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final email = Supabase.instance.client.auth.currentUser?.email ?? 'user@gmail.com';
-    final firstLetter = email.isNotEmpty ? email[0].toUpperCase() : 'U';
+    final user = _client.auth.currentUser;
+    final email = user?.email ?? 'N/A';
+    final displayName = user?.userMetadata['name'] ?? 'U';
+    final memberSince = 'Jan 2024';
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Settings'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 1,
+      ),
       body: SingleChildScrollView(
-        child: Column(
-          children: [
-            SizedBox(height: 54),
-            Text(
-              'Settings',
-              style: const TextStyle(
-                color: Color(0xFF111827),
-                fontSize: 22,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: 8),
+              const Text(
+                'ACCOUNT',
+                style: TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
               ),
-            ),
-            SizedBox(height: 16),
-            // Account Section
-            Container(
-              width: double.infinity,
-              color: const Color(0xFFFFFFFF),
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 24,
+              SizedBox(height: 8),
+              Card(
+                color: Colors.white,
+                child: ListTile(
+                  leading: CircleAvatar(
                     backgroundColor: const Color(0xFF6366F1),
                     child: Text(
-                      firstLetter,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                      ),
+                      displayName.substring(0, 1),
+                      style: const TextStyle(fontSize: 22, color: Colors.white),
                     ),
                   ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          email,
-                          style: const TextStyle(
-                            color: Color(0xFF111827),
-                            fontSize: 15,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        const Text(
-                          'Free plan · Member since Jan 2024',
-                          style: TextStyle(
-                            color: Color(0xFF9CA3AF),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1, color: Color(0xFFE5E7EB)),
-            SizedBox(height: 8),
-            // Preferences Title
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'PREFERENCES',
-                  style: TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 10,
+                  title: Text(email, style: const TextStyle(fontSize: 15)),
+                  subtitle: const Text(
+                    'Free plan · Member since Jan 2024',
+                    style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 12),
                   ),
                 ),
               ),
-            ),
-            SizedBox(height: 8),
-            // Dark Mode Switch
-            Container(
-              width: double.infinity,
-              color: const Color(0xFFFFFFFF),
-              child: ListTile(
-                title: const Text(
-                  'Dark Mode',
-                  style: TextStyle(
-                    color: Color(0xFF111827),
-                    fontSize: 15,
-                  ),
-                ),
-                trailing: Switch(
+              SizedBox(height: 16),
+              const Divider(color: Color(0xFFE5E7EB), height: 1),
+              SizedBox(height: 16),
+              const Text(
+                'PREFERENCES',
+                style: TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
+              ),
+              SizedBox(height: 8),
+              Card(
+                color: Colors.white,
+                child: SwitchListTile(
+                  title: const Text('Dark Mode', style: TextStyle(fontSize: 15)),
                   value: _darkMode,
-                  onChanged: _toggleDarkMode,
+                  onChanged: _setDarkMode,
                 ),
               ),
-            ),
-            const Divider(height: 1, color: Color(0xFFE5E7EB)),
-            // Default Note Color
-            Container(
-              width: double.infinity,
-              color: const Color(0xFFFFFFFF),
-              child: ListTile(
-                title: const Text(
-                  'Default note color',
-                  style: TextStyle(
-                    color: Color(0xFF111827),
-                    fontSize: 15,
-                  ),
-                ),
-                trailing: GestureDetector(
-                  onTap: _pickDefaultColor,
-                  child: CircleAvatar(
-                    backgroundColor: Color(int.parse(_defaultColor.replaceFirst('#', '0xFF'))),
-                    radius: 12,
-                  ),
-                ),
-              ),
-            ),
-            const Divider(height: 1, color: Color(0xFFE5E7EB)),
-            // Editor Font Size
-            Container(
-              width: double.infinity,
-              color: const Color(0xFFFFFFFF),
-              child: ListTile(
-                title: const Text(
-                  'Editor font size',
-                  style: TextStyle(
-                    color: Color(0xFF111827),
-                    fontSize: 15,
-                  ),
-                ),
-                trailing: DropdownButton<int>(
-                  value: _fontSize,
-                  icon: const Icon(Icons.arrow_drop_down),
-                  underline: Container(),
-                  items: _fontSizeOptions
-                      .map(
-                        (val) => DropdownMenuItem(
-                          value: val,
-                          child: Text(val.toString()),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: _pickFontSize,
-                ),
-              ),
-            ),
-            const Divider(height: 1, color: Color(0xFFE5E7EB)),
-            // Sort Notes By
-            Container(
-              width: double.infinity,
-              color: const Color(0xFFFFFFFF),
-              child: ListTile(
-                title: const Text(
-                  'Sort notes by',
-                  style: TextStyle(
-                    color: Color(0xFF111827),
-                    fontSize: 15,
-                  ),
-                ),
-                trailing: DropdownButton<String>(
-                  value: _sortBy,
-                  icon: const Icon(Icons.arrow_drop_down),
-                  underline: Container(),
-                  items: _sortOptions
-                      .map(
-                        (opt) => DropdownMenuItem(
-                          value: opt,
-                          child: Text(opt),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: _pickSortBy,
-                ),
-              ),
-            ),
-            const Divider(height: 1, color: Color(0xFFE5E7EB)),
-            // Storage Section
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'STORAGE',
-                  style: TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              color: const Color(0xFFFFFFFF),
-              child: ListTile(
-                title: const Text(
-                  'iCloud / Google Drive backup',
-                  style: TextStyle(
-                    color: Color(0xFF111827),
-                    fontSize: 15,
-                  ),
-                ),
-                trailing: Text(
-                  'Off',
-                  style: TextStyle(
-                    color: Color(0xFF9CA3AF),
-                    fontSize: 13,
-                  ),
-                ),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Coming Soon')),
-                  );
-                },
-              ),
-            ),
-            const Divider(height: 1, color: Color(0xFFE5E7EB)),
-            // About Section
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'ABOUT',
-                  style: TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              color: const Color(0xFFFFFFFF),
-              child: ListTile(
-                title: const Text(
-                  'Version',
-                  style: TextStyle(
-                    color: Color(0xFF111827),
-                    fontSize: 15,
-                  ),
-                ),
-                trailing: const Text(
-                  '1.0.0',
-                  style: TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-            ),
-            const Divider(height: 1, color: Color(0xFFE5E7EB)),
-            SizedBox(height: 16),
-            // Sign Out button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEF4444),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+              SizedBox(height: 16),
+              Card(
+                color: Colors.white,
+                child: ListTile(
+                  title:
+                      const Text('Default note color', style: TextStyle(fontSize: 15)),
+                  trailing: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: Color(int.parse(_defaultColor.replaceFirst('#', '0xFF'))),
+                      shape: BoxShape.circle,
                     ),
                   ),
-                  onPressed: _signOut,
-                  child: const Text(
-                    'Sign Out',
-                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  onTap: _showColorPicker,
+                ),
+              ),
+              SizedBox(height: 16),
+              Card(
+                color: Colors.white,
+                child: ListTile(
+                  title: const Text('Editor font size', style: TextStyle(fontSize: 15)),
+                  trailing: DropdownButton<int>(
+                    value: _fontSize,
+                    items: _fontSizes
+                        .map((size) => DropdownMenuItem<int>(
+                              value: size,
+                              child: Text(
+                                size.toString(),
+                                style: const TextStyle(color: Color(0xFF6B7280), fontSize: 15),
+                              ),
+                            ))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) _setFontSize(v);
+                    },
                   ),
                 ),
               ),
-            ),
-            SizedBox(height: 32),
-          ],
+              SizedBox(height: 16),
+              Card(
+                color: Colors.white,
+                child: ListTile(
+                  title: const Text('Sort notes by', style: TextStyle(fontSize: 15)),
+                  trailing: DropdownButton<String>(
+                    value: _sortBy,
+                    items: _sortOptions
+                        .map((opt) => DropdownMenuItem<String>(
+                              value: opt,
+                              child: Text(opt,
+                                  style: const TextStyle(
+                                      color: Color(0xFF6B7280), fontSize: 13)),
+                            ))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) _setSortBy(v);
+                    },
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              const Divider(color: Color(0xFFE5E7EB), height: 1),
+              SizedBox(height: 16),
+              const Text(
+                'STORAGE',
+                style: TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
+              ),
+              SizedBox(height: 8),
+              Card(
+                color: Colors.white,
+                child: ListTile(
+                  title: const Text('iCloud / Google Drive backup',
+                      style: TextStyle(fontSize: 15)),
+                  trailing: const Text('Off',
+                      style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF))),
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Coming Soon'),
+                    ));
+                  },
+                ),
+              ),
+              SizedBox(height: 16),
+              const Divider(color: Color(0xFFE5E7EB), height: 1),
+              const SizedSizedBox(height: 16),
+
+              const Text(
+                'ABOUT',
+                style: TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
+              ),
+              SizedBox(height: 8),
+              Card(
+                color: Colors.white,
+                child: ListTile(
+                  title: const Text('Version', style: TextStyle(fontSize: 15)),
+                  trailing: const Text('1.0.0',
+                      style: TextStyle(fontSize: 15, color: Color(0xFF6B7280))),
+                ),
+              ),
+              SizedBox(height: 24),
+              Center(
+                child: SizedBox(
+                  width: 358,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFEF4444),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Confirm Sign Out'),
+                          content: const Text('Are you sure you want to sign out?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Sign Out'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        await _signOut();
+                      }
+                    },
+                    child: const Text(
+                      'Sign Out',
+                      style: TextStyle(fontSize: 16, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 32),
+            ],
+          ),
         ),
-      ),
+      );
   }
 }
