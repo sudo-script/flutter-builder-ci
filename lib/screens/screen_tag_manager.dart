@@ -11,65 +11,63 @@ class TagManagerScreen extends StatefulWidget {
 
 class _TagManagerScreenState extends State<TagManagerScreen> {
   final TextEditingController _newTagController = TextEditingController();
-  String _newTagColor = '#6366f1';
-  final Map<int, TextEditingController> _renameControllers = {};
-  int? _editingTagId;
+  final Map<String, TextEditingController> _renameControllers = {};
+  final Set<String> _editingTags = {};
   late final RealtimeChannel _channel;
-  List<Map<String, dynamic>> _tags = [];
 
-  final List<String> _colorOptions = const [
-    '#ffffff',
-    '#fef3c7',
-    '#dbeafe',
-    '#dcfce7',
-    '#fce7f3',
-    '#ede9fe',
-    '#fee2e2',
-    '#f3f4f6'
-  ];
+  String _selectedColor = '#ffffff';
+  List<Map<String, dynamic>> _tags = [];
 
   @override
   void initState() {
     super.initState();
-    _loadTags();
-    _subscribe();
+    _fetchTags();
+    _subscribeRealtime();
   }
 
   @override
   void dispose() {
     _newTagController.dispose();
-    _renameControllers.values.forEach((c) => c.dispose());
+    for (var controller in _renameControllers.values) {
+      controller.dispose();
+    }
     Supabase.instance.client.removeChannel(_channel);
     super.dispose();
   }
 
-  void _subscribe() {
+  Future<void> _subscribeRealtime() async {
     _channel = Supabase.instance.client.channel('public:tags')
         .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'tags',
-          callback: (payload) {
-            _loadTags();
-          },
-        )
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'tags',
+      callback: (_) => _fetchTags(),
+    )
         .subscribe();
   }
 
-  Future<void> _loadTags() async {
+  Future<void> _fetchTags() async {
     try {
-      final userId =
-          Supabase.instance.client.auth.currentUser!.id;
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
       final data = await Supabase.instance.client
           .from('tags')
-          .select('id, name, color, note_tags(*, notes(*) )')
-          .eq('user_id', userId)
-          .order('created_at', ascending: false);
+          .select('id, name, color')
+          .eq('user_id', userId);
+      List<Map<String, dynamic>> tags = List<Map<String, dynamic>>.from(data);
+      for (var tag in tags) {
+        final tagId = tag['id'] as String;
+        final notesData = await Supabase.instance.client
+            .from('note_tags')
+            .select('tag_id')
+            .eq('tag_id', tagId);
+        tag['count'] = notesData.length;
+      }
       setState(() {
-        _tags = List<Map<String, dynamic>>.from(data);
+        _tags = tags;
       });
     } catch (e) {
-      // handle error
+      // Handle error
     }
   }
 
@@ -77,75 +75,71 @@ class _TagManagerScreenState extends State<TagManagerScreen> {
     final name = _newTagController.text.trim();
     if (name.isEmpty) return;
     try {
-      final userId =
-          Supabase.instance.client.auth.currentUser!.id;
-      await Supabase.instance.client
-          .from('tags')
-          .insert({
+      await Supabase.instance.client.from('tags').insert({
         'name': name,
-        'color': _newTagColor,
-        'user_id': userId,
+        'color': _selectedColor,
+        'user_id': Supabase.instance.client.auth.currentUser?.id,
       });
       _newTagController.clear();
       setState(() {
-        _newTagColor = '#6366f1';
+        _selectedColor = '#ffffff';
       });
-      _loadTags();
+      await _fetchTags();
     } catch (e) {
-      // handle error
+      // Handle error
     }
   }
 
-  Future<void> _updateTagName(int id, String newName) async {
-    if (newName.trim().isEmpty) return;
+  Future<void> _renameTag(String id) async {
+    final controller = _renameControllers[id];
+    if (controller == null) return;
+    final newName = controller.text.trim();
+    if (newName.isEmpty) return;
     try {
       await Supabase.instance.client
           .from('tags')
-          .update({'name': newName.trim()})
+          .update({'name': newName})
           .eq('id', id);
-      _loadTags();
+      _editingTags.remove(id);
+      _renameControllers.remove(id);
+      await _fetchTags();
     } catch (e) {
-      // handle error
+      // Handle error
     }
   }
 
-  Future<void> _updateTagColor(int id, String color) async {
+  Future<void> _changeColor(String id, String color) async {
     try {
       await Supabase.instance.client
           .from('tags')
           .update({'color': color})
           .eq('id', id);
-      _loadTags();
+      await _fetchTags();
     } catch (e) {
-      // handle error
+      // Handle error
     }
   }
 
-  Future<void> _deleteTag(int id, int noteCount) async {
-    bool proceed = true;
-    if (noteCount > 0) {
-      final result = await showDialog<bool>(
+  Future<void> _deleteTag(String id, int count) async {
+    if (count > 0) {
+      final confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Delete tag with notes?'),
+          title: const Text('Delete tag?'),
           content: const Text(
-              'This tag has associated notes. Deleting it will also remove those associations.'),
+              'This tag is associated with notes. Deleting will remove all associations.'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
-            ),
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel')),
             TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Delete'),
-            ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Delete')),
           ],
         ),
       );
-      proceed = result ?? false;
+      if (confirm != true) return;
     }
-    if (!proceed) return;
-
     try {
       await Supabase.instance.client
           .from('note_tags')
@@ -155,35 +149,50 @@ class _TagManagerScreenState extends State<TagManagerScreen> {
           .from('tags')
           .delete()
           .eq('id', id);
-      _loadTags();
+      await _fetchTags();
     } catch (e) {
-      // handle error
+      // Handle error
     }
   }
 
-  void _showColorPicker({required Function(String) onColorSelected}) {
+  void _showColorPicker(String tagId) {
+    final colors = [
+      '#ffffff',
+      '#fef3c7',
+      '#dbeafe',
+      '#dcfce7',
+      '#fce7f3',
+      '#ede9fe',
+      '#fee2e2',
+      '#f3f4f6',
+    ];
     showModalBottomSheet(
       context: context,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(16),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Wrap(
-          spacing: 8,
-          children: _colorOptions.map((color) {
-            return GestureDetector(
-              onTap: () {
-                Navigator.pop(ctx);
-                onColorSelected(color);
-              },
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Color(int.parse(color.replaceFirst('#', '0xFF'))),
-                  shape: BoxShape.circle,
+          spacing: 10,
+          children: colors
+              .map(
+                (c) => GestureDetector(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _changeColor(tagId, c);
+                  },
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Color(int.parse(c.replaceFirst('#', '0xFF'))),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          width: 2,
+                          color: Colors.black.withOpacity(0.2)),
+                    ),
+                  ),
                 ),
-              ),
-            );
-          }).toList(),
+              )
+              .toList(),
         ),
       );
   }
@@ -191,45 +200,52 @@ class _TagManagerScreenState extends State<TagManagerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/notes_list'),
-        ),
-        title: const Text('Tags'),
-        actions: [
-          TextButton(
-            onPressed: () => context.go('/notes_list'),
-            child: const Text(
-              'Done',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // New tag row
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 48.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header with back arrow and Done button
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   GestureDetector(
-                    onTap: () => _showColorPicker(
-                      onColorSelected: (c) => setState(() => _newTagColor = c),
+                    onTap: () => context.go('/notes_list'),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.arrow_back),
+                        SizedBox(width: 4),
+                        Text(
+                          'Tags',
+                          style: TextStyle(fontSize: 20),
+                        ),
+                      ],
                     ),
-                    child: CircleAvatar(
-                      backgroundColor: Color(
-                          int.parse(_newTagColor.replaceFirst('#', '0xFF'))),
-                      radius: 12,
+                  ),
+                  TextButton(
+                    onPressed: () => context.go('/notes_list'),
+                    child: const Text('Done'),
+                  ),
+                ],
+              ),
+              SizedBox(height: 24),
+              // New tag input row
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      // Show color picker for new tag
+                      _showColorPicker('new_tag_dummy');
+                    },
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Color(int.parse(_selectedColor.replaceFirst('#', '0xFF'))),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.black, width: 1),
+                      ),
                     ),
                   ),
                   SizedBox(width: 8),
@@ -238,85 +254,43 @@ class _TagManagerScreenState extends State<TagManagerScreen> {
                       controller: _newTagController,
                       decoration: const InputDecoration(
                         hintText: 'New tag name…',
-                        border: InputBorder.none,
                       ),
                     ),
                   ),
+                  SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: _addTag,
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.only(
-                        left: 12,
-                        right: 12,
-                      ),
-                    ),
-                    child: const Text(
-                      '+',
-                      style: TextStyle(fontSize: 22, color: Colors.white),
-                    ),
+                    child: const Text('+'),
                   ),
                 ],
               ),
-            ),
-            SizedBox(height: 16),
-            const Text(
-              'YOUR TAGS',
-              style: TextStyle(
-                  color: Color(0xFF6B7280), fontSize: 10, fontWeight: FontWeight.bold),
-            ),
-            const Divider(color: Color(0xFFE5E7EB)),
-            SizedBox(height: 8),
-            ..._tags.map((tag) {
-              final int id = tag['id'];
-              final String name = tag['name'];
-              final String color = tag['color'];
-              final List<dynamic>? noteTags = tag['note_tags'] as List<dynamic>?;
-              final int noteCount = noteTags?.length ?? 0;
-              final bool isEditing = _editingTagId == id;
-              return Dismissible(
-                key: ValueKey(id),
-                direction: DismissDirection.horizontal,
-                background: Container(
-                  color: Colors.blue,
-                  alignment: Alignment.centerLeft,
-                  padding: const EdgeInsets.only(left: 20),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.archive, color: Colors.white),
-                      Text(
-                        'Archive',
-                        style: TextStyle(
-                            color: Colors.white, fontSize: 11),
-                      )
-                    ],
-                  ),
-                ),
-                secondaryBackground: Container(
-                  color: Colors.red,
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 20),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.delete, color: Colors.white),
-                      Text(
-                        'Delete',
-                        style: TextStyle(
-                            color: Colors.white, fontSize: 11),
-                      )
-                    ],
-                  ),
-                ),
-                confirmDismiss: (direction) async {
-                  if (direction == DismissDirection.endToStart) {
-                    return await showDialog<bool>(
+              SizedBox(height: 24),
+              const Divider(),
+              SizedBox(height: 16),
+              const Text(
+                'YOUR TAGS',
+                style: TextStyle(color: Color(0xFF6B7280), fontSize: 10),
+              ),
+              SizedBox(height: 16),
+              const Divider(),
+              SizedBox(height: 16),
+              // List of tags
+              ..._tags.map((tag) {
+                final id = tag['id'] as String;
+                final name = tag['name'] as String;
+                final colorHex = tag['color'] as String;
+                final count = tag['count'] as int? ?? 0;
+                final isEditing = _editingTags.contains(id);
+                return Dismissible(
+                  key: ValueKey(id),
+                  direction: DismissDirection.endToStart,
+                  confirmDismiss: (direction) async {
+                    final confirm = await showDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
                         title: const Text('Delete tag?'),
+                        content: Text(
+                            'This tag is associated with $count notes. Deleting will remove all associations.'),
                         actions: [
                           TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
@@ -325,84 +299,59 @@ class _TagManagerScreenState extends State<TagManagerScreen> {
                               onPressed: () => Navigator.pop(ctx, true),
                               child: const Text('Delete')),
                         ],
-                      );
-                  }
-                  return true;
-                },
-                onDismissed: (direction) {
-                  if (direction == DismissDirection.endToStart) {
-                    _deleteTag(id, noteCount);
-                  } else {
-                    _archiveTag(id);
-                  }
-                },
-                child: ListTile(
-                  leading: GestureDetector(
-                    onTap: () => _showColorPicker(
-                      onColorSelected: (c) => _updateTagColor(id, c),
-                    ),
-                    child: CircleAvatar(
-                      backgroundColor: Color(
-                          int.parse(color.replaceFirst('#', '0xFF'))),
-                      radius: 12,
-                    ),
+                      ),
+                    );
+                    return confirm == true;
+                  },
+                  onDismissed: (dir) {
+                    _deleteTag(id, count);
+                  },
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: const Icon(Icons.delete, color: Colors.white),
                   ),
-                  title: GestureDetector(
-                    onDoubleTap: () {
-                      if (_editingTagId == id) {
-                        _updateTagName(id, _renameControllers[id]!.text);
-                        setState(() => _editingTagId = null);
-                        _renameControllers[id]?.dispose();
-                        _renameControllers.remove(id);
-                      } else {
-                        _renameControllers[id] = TextEditingController(text: name);
-                        setState(() => _editingTagId = id);
-                      }
-                    },
-                    child: isEditing
-                        ? TextField(
-                            controller: _renameControllers[id],
-                            onSubmitted: (_) {
-                              _updateTagName(id, _renameControllers[id]!.text);
-                              setState(() => _editingTagId = null);
-                              _renameControllers[id]?.dispose();
-                              _renameControllers.remove(id);
-                            },
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                            ),
-                          )
-                        : Text(
-                            name,
-                            style: const TextStyle(
-                                color: Color(0xFF111827), fontSize: 15),
-                          ),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (noteCount > 0)
-                        Text(
-                          '$noteCount notes',
-                          style: const TextStyle(
-                              color: Color(0xFF9CA3AF), fontSize: 12),
+                  child: ListTile(
+                    leading: GestureDetector(
+                      onTap: () => _showColorPicker(id),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: Color(
+                              int.parse(colorHex.replaceFirst('#', '0xFF'))),
+                          shape: BoxShape.circle,
+                          border:
+                              Border.all(color: Colors.black, width: 1),
                         ),
-                      SizedBox(width: 8),
-                      const Icon(Icons.close, color: Color(0xFFD1D5DB), size: 16),
-                    ],
+                      ),
+                    ),
+                    title: isEditing
+                        ? TextField(
+                            controller: _renameControllers[id] ??
+                                TextEditingController(text: name),
+                            onEditingComplete: () => _renameTag(id),
+                            decoration:
+                                const InputDecoration(border: InputBorder.none),
+                          )
+                        : GestureDetector(
+                            onDoubleTap: () {
+                              setState(() {
+                                _editingTags.add(id);
+                                _renameControllers[id] =
+                                    TextEditingController(text: name);
+                              });
+                            },
+                            child: Text(name),
+                          ),
+                    trailing: Text('$count notes'),
                   ),
-                ),
-              );
-            }).toList(),
-            SizedBox(height: 16),
-          ],
+                );
+              }).toList(),
+            ],
+          ),
         ),
       );
-  }
-
-  void _archiveTag(int id) {
-    // Archive logic if needed
-    // For now, just delete
-    _deleteTag(id, 0);
   }
 }
