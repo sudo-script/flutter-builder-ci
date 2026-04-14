@@ -4,15 +4,14 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:audio_waveforms/audio_waveforms.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:audio_waveforms/audio_waveforms.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest.dart' as tzdata;
 
 class NoteEditorScreen extends StatefulWidget {
   final String? noteId;
@@ -23,230 +22,119 @@ class NoteEditorScreen extends StatefulWidget {
 }
 
 class _NoteEditorScreenState extends State<NoteEditorScreen> {
+  // Controllers
   final TextEditingController _titleController = TextEditingController();
   late QuillController _quillController;
+  final ImagePicker _picker = ImagePicker();
+
+  // Tag handling
+  List<Map<String, dynamic>> _allTags = [];
+  List<String> _selectedTagIds = [];
+
+  // Note state
+  String _noteColor = '#ffffff';
   bool _isPinned = false;
-  bool _hasReminder = false;
   DateTime? _reminderAt;
-  String _audioPath = '';
+  String? _audioUrl;
   bool _isRecording = false;
   bool _isPlaying = false;
+  String? _audioLocalPath;
+
+  // Realtime
+  late final RealtimeChannel _channel;
+
+  // Notifications
+  final FlutterLocalNotificationsPlugin _notificationPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  // Recorders
   late RecorderController _recCtrl;
   late PlayerController _playCtrl;
-  final FlutterLocalNotificationsPlugin _notificationsPlugin =
-      FlutterLocalNotificationsPlugin();
-  Color _backgroundColor = Colors.white;
-  List<String> _selectedTagIds = [];
-  List<Tag> _tags = [];
-  late final RealtimeChannel _channel;
-  late final SupabaseClient _supabase;
+
+  // Audio recording timer
+  Timer? _recordTimer;
+  int _recordDurationSeconds = 0;
 
   @override
   void initState() {
     super.initState();
-    _supabase = Supabase.instance.client;
-    tzdata.initializeTimeZones();
-    _initializeNotifs();
+    _quillController = QuillController.basic();
     _recCtrl = RecorderController()
       ..androidEncoder = AndroidEncoder.aac
       ..androidOutputFormat = AndroidOutputFormat.mpeg4
       ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
       ..sampleRate = 44100;
     _playCtrl = PlayerController();
-    _quillController = QuillController.basic();
-    _loadNote();
+    _loadTags();
+    if (widget.noteId != null) {
+      _loadNote();
+    } else {
+      _quillController = QuillController.basic();
+    }
     _subscribeRealtime();
   }
 
-  void _initializeNotifs() async {
-    const android = AndroidInitializationSettings('app_icon');
-    const ios = IOSInitializationSettings();
-    const settings = InitializationSettings(android: android, iOS: ios);
-    await _notificationsPlugin.initialize(settings);
-  }
-
-  Future<void> _subscribeRealtime() async {
-    _channel = _supabase.channel('public:notes')
-      .onPostgresChanges(event: PostgresChangeEvent.all, schema: 'public', table: 'notes',
-          callback: (_) => _loadNote())
-      .subscribe();
-  }
-
-  Future<void> _loadNote() async {
-    if (widget.noteId == null) return;
+  Future<void> _loadTags() async {
     try {
-      final data = await _supabase
-          .from('notes')
-          .select('*, note_tags(tag_id,tags(id,name,color))')
-          .eq('id', widget.noteId)
-          .single();
+      final data = await Supabase.instance.client
+          .from('tags')
+          .select('id, name, color')
+          .order('name', ascending: true);
       setState(() {
-        _titleController.text = data['title'] ?? '';
-        final contentJson = data['content'];
-        if (contentJson != null) {
-          _quillController = QuillController(
-              document: Document.fromJson(jsonDecode(contentJson)),
-              selection: const TextSelection.collapsed(offset: 0));
-        }
-        _backgroundColor = Color(int.parse(
-            data['color'].replaceFirst('#', '0xFF')));
-        _isPinned = data['is_pinned'] ?? false;
-        _reminderAt = data['reminder_at'];
-        _hasReminder = _reminderAt != null;
-        _selectedTagIds =
-            List<String>.from(data['note_tags'].map((nt) => nt['tag_id']));
-        _tags = List<Tag>.from(data['note_tags']
-            .map((nt) => Tag(
-                id: nt['tags']['id'],
-                name: nt['tags']['name'],
-                color: nt['tags']['color'])));
+        _allTags = List<Map<String, dynamic>>.from(data);
       });
     } catch (_) {}
   }
 
-  Future<void> _autoSave() async {
-    await _saveNote(isAutoSave: true);
-  }
-
-  Future<void> _saveNote({bool isAutoSave = false}) async {
-    final title = _titleController.text.trim();
-    final contentJson =
-        jsonEncode(_quillController.document.toDelta().toJson());
-    final plainText = _quillController.document.toPlainText();
-    final colorHex = '#${_backgroundColor.value.toRadixString(16).substring(2)}';
-    if (title.isEmpty && plainText.isEmpty && !isAutoSave) return;
-    if (widget.noteId == null) {
-      await _supabase
+  Future<void> _loadNote() async {
+    try {
+      final data = await Supabase.instance.client
           .from('notes')
-          .insert({
-            'title': title,
-            'content': contentJson,
-            'plain_text': plainText,
-            'color': colorHex,
-            'is_pinned': _isPinned,
-            'reminder_at': _reminderAt?.toIso8601String(),
-            'audio_path': _audioPath,
-            'user_id': _supabase.auth.currentUser?.id
-          })
-          .then((res) => res);
-      final insertedId = res['id'] as String;
-      widget.noteId = insertedId;
-      await _uploadTags(insertedId);
-    } else {
-      await _supabase
-          .from('notes')
-          .update({
-            'title': title,
-            'content': contentJson,
-            'plain_text': plainText,
-            'color': colorHex,
-            'is_pinned': _isPinned,
-            'reminder_at': _reminderAt?.toIso8601String(),
-            'audio_path': _audioPath
-          })
-          .eq('id', widget.noteId)
-          .then((_) => _uploadTags(widget.noteId!));
-    }
-  }
-
-  Future<void> _uploadTags(String noteId) async {
-    await _supabase.from('note_tags').delete().eq('note_id', noteId);
-    for (final tagId in _selectedTagIds) {
-      await _supabase
+          .select(
+              'title, content, plain_text, color, is_pinned, reminder_at, audio_url')
+          .eq('id', widget.noteId!)
+          .single();
+      setState(() {
+        _titleController.text = data['title'] ?? '';
+        _noteColor = data['color'] ?? '#ffffff';
+        _isPinned = data['is_pinned'] ?? false;
+        _reminderAt = data['reminder_at'] != null
+            ? DateTime.parse(data['reminder_at'])
+            : null;
+        _audioUrl = data['audio_url'];
+        if (data['content'] != null) {
+          _quillController = QuillController(
+              document:
+                  Document.fromJson(jsonDecode(data['content'])),
+              selection:
+                  const TextSelection.collapsed(offset: 0));
+        }
+      });
+      // Fetch tags for this note
+      final noteTags = await Supabase.instance.client
           .from('note_tags')
-          .insert({'note_id': noteId, 'tag_id': tagId});
-    }
+          .select('tag_id')
+          .eq('note_id', widget.noteId!);
+      setState(() {
+        _selectedTagIds =
+            List<String>.from(noteTags.map((e) => e['tag_id'].toString()));
+      });
+    } catch (_) {}
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final file =
-        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (file == null) return;
-    final bytes = await File(file.path).readAsBytes();
-    final path =
-        'note-images/${const Uuid().v4() + file.name?.split('.').last ?? '.jpg'}';
-    await _supabase.storage
-        .from('note-images')
-        .uploadBinary(path, bytes,
-            fileOptions: FileOptions(contentType: 'image/jpeg'));
-    final url = _supabase.storage.from('note-images').getPublicUrl(path);
-    final idx = _quillController.selection.baseOffset;
-    _quillController.document.insert(idx, BlockEmbed.image(url));
-    await _supabase.from('attachments').insert({
-      'note_id': widget.noteId,
-      'url': url,
-      'type': 'image',
-      'size_kb': bytes.lengthInBytes / 1024
-    });
-  }
-
-  Future<void> _startRecording() async {
-    final appDocDir = await getApplicationDocumentsDirectory();
-    final path =
-        '${appDocDir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
-    await _recCtrl.record(path: path);
-    setState(() => _isRecording = true);
-  }
-
-  Future<void> _stopRecording() async {
-    final audioPath = await _recCtrl.stop();
-    setState(() {
-      _isRecording = false;
-      _audioPath = audioPath;
-    });
-    final file = File(audioPath!);
-    final bytes = await file.readAsBytes();
-    final storagePath =
-        'note-audio/${const Uuid().v4() + audioPath.split('/').last}';
-    await _supabase.storage
-        .from('note-audio')
-        .uploadBinary(storagePath, bytes,
-            fileOptions: FileOptions(contentType: 'audio/m4a'));
-    final url = _supabase.storage.from('note-audio').getPublicUrl(storagePath);
-    final idx = _quillController.selection.baseOffset;
-    _quillController.document
-        .insert(idx, BlockEmbed.video(url)); // using video embed for audio
-    await _supabase.from('attachments').insert({
-      'note_id': widget.noteId,
-      'url': url,
-      'type': 'audio',
-      'size_kb': bytes.lengthInBytes / 1024
-    });
-  }
-
-  Future<void> _pickReminder() async {
-    final date = await showDatePicker(
-        context: context,
-        initialDate: DateTime.now().add(const Duration(hours: 1)),
-        firstDate: DateTime.now(),
-        lastDate: DateTime.now().add(const Duration(days: 365)));
-    if (date == null) return;
-    final time = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(DateTime.now().add(const Duration(hours: 1))));
-    if (time == null) return;
-    final reminder = DateTime(
-        date.year, date.month, date.day, time.hour, time.minute);
-    setState(() => _reminderAt = reminder);
-    final tzAt = tz.TZDateTime.from(reminder, tz.local);
-    await _notificationsPlugin.zonedSchedule(
-        reminder.millisecondsSinceEpoch ~/ 1000,
-        'Reminder',
-        'Note reminder',
-        tzAt,
-        const NotificationDetails(
-            android: AndroidNotificationDetails(
-                'note_reminder_channel', 'Note Reminders')),
-        androidScheduleMode:
-            AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime);
-  }
-
-  Color _parseColor(String hex) {
-    if (!hex.startsWith('#')) hex = '#$hex';
-    return Color(int.parse(hex.replaceFirst('#', '0xFF')));
+  void _subscribeRealtime() {
+    _channel = Supabase.instance.client.channel('public:notes')
+        .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'notes',
+            callback: (payload) {
+          if (widget.noteId != null &&
+              payload.newRecord['id'] == widget.noteId) {
+            _loadNote();
+          }
+        })
+        .subscribe();
   }
 
   @override
@@ -255,176 +143,399 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     _quillController.dispose();
     _recCtrl.dispose();
     _playCtrl.dispose();
-    _channel.unsubscribe();
-    _supabase.removeChannel(_channel);
+    _notificationPlugin.cancelAll();
+    Supabase.instance.client.removeChannel(_channel);
+    _recordTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _autoSave() async {
+    await _saveNote();
+  }
+
+  Future<void> _saveNote() async {
+    final title = _titleController.text.trim();
+    final contentJson = jsonEncode(_quillController.document.toDelta().toJson());
+    final plainText = _quillController.document.toPlainText();
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+    try {
+      if (widget.noteId != null) {
+        await Supabase.instance.client
+            .from('notes')
+            .update({
+              'title': title,
+              'content': contentJson,
+              'plain_text': plainText,
+              'color': _noteColor,
+              'is_pinned': _isPinned,
+              'reminder_at': _reminderAt?.toIso8601String(),
+              'audio_url': _audioUrl
+            })
+            .eq('id', widget.noteId!)
+            .eq('user_id', userId);
+        await _updateNoteTags();
+      } else {
+        final data = await Supabase.instance.client
+            .from('notes')
+            .insert({
+              'title': title,
+              'content': contentJson,
+              'plain_text': plainText,
+              'color': _noteColor,
+              'is_pinned': _isPinned,
+              'reminder_at': _reminderAt?.toIso8601String(),
+              'audio_url': _audioUrl,
+              'user_id': userId
+            })
+            .single();
+        final newNoteId = data['id'] as String;
+        await _updateNoteTags();
+        // link to new note
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _updateNoteTags() async {
+    if (_localNoteId = = null) return;
+    final noteId = widget.noteId!;
+    // delete existing
+    await Supabase.instance.client
+        .from('note_tags')
+        .delete()
+        .eq('note_id', noteId);
+    // insert new
+    for (var tagId in _selectedTagIds) {
+      await Supabase.instance.client
+          .from('note_tags')
+          .insert({'note_id': noteId, 'tag_id': tagId});
+    }
+  }
+
+  void _togglePin() {
+    setState(() {
+      _isPinned = !_isPinned;
+    });
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? imageFile = await _picker.pickImage(
+        source: ImageSource.gallery, imageQuality: 80);
+    if (imageFile == null) return;
+    final bytes = await imageFile.readAsBytes();
+    final uid = Uuid().v4();
+    final path = 'uploads/notes/${uid}.jpg';
+    await Supabase.instance.client.storage
+        .from('note-images')
+        .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: 'image/jpeg'));
+    final url = Supabase.instance.client.storage
+        .from('note-images')
+        .getPublicUrl(path);
+    final currentIdx = _quillController.selection.baseOffset;
+    setState(() {
+      _quillController.document
+          .insert(currentIdx, BlockEmbed.image(url));
+    });
+  }
+
+  Future<void> _pickAlarm() async {
+    final date = await showDatePicker(
+        context: context,
+        initialDate: _reminderAt ?? DateTime.now(),
+        firstDate: DateTime.now(),
+        lastDate: DateTime.now().add(const Duration(days: 365)));
+    if (date == null) return;
+    final timeOfDay = await showTimePicker(
+        context: context, initialTime: TimeOfDay.now());
+    if (timeOfDay == null) return;
+    final reminderDateTime = DateTime(date.year, date.month, date.day,
+        timeOfDay.hour, timeOfDay.minute);
+    setState(() {
+      _reminderAt = reminderDateTime;
+    });
+    await _scheduleAlarm(reminderDateTime);
+  }
+
+  Future<void> _scheduleAlarm(DateTime reminder) async {
+    final androidDetails = AndroidNotificationDetails(
+        'note_alarm', 'Note Reminders',
+        notificationChannelName: 'note_alarm');
+    final iOSDetails = DarwinNotificationDetails();
+    final notificationDetails = NotificationDetails(
+        android: androidDetails, iOS: iOSDetails);
+    final tzAt = tz.TZDateTime.from(reminder, tz.local);
+    await _notificationPlugin.zonedSchedule(
+        reminder.hashCode,
+        _titleController.text,
+        'Reminder: ${_titleController.text}',
+        tzAt,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime);
+  }
+
+  Future<void> _startRecording() async {
+    final appDocDir = await getApplicationDocumentsDirectory();
+    final filePath = '${appDocDir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    await _recCtrl.record(path: filePath);
+    setState(() {
+      _isRecording = true;
+      _audioLocalPath = filePath;
+      _recordDurationSeconds = 0;
+    });
+    _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() {
+        _recordDurationSeconds += 1;
+      });
+    });
+  }
+
+  Future<void> _stopRecording() async {
+    final path = await _recCtrl.stop();
+    _recordTimer?.cancel();
+    setState(() {
+      _isRecording = false;
+    });
+    // upload
+    final file = File(path!);
+    final bytes = await file.readAsBytes();
+    final uid = Uuid().v4();
+    final uploadPath = 'uploads/audio_${uid}.m4a';
+    await Supabase.instance.client.storage
+        .from('note-audio')
+        .uploadBinary(uploadPath, bytes,
+            fileOptions:
+                FileOptions(contentType: 'audio/m4a'));
+    final url = Supabase.instance.client.storage
+        .from('note-audio')
+        .getPublicUrl(uploadPath);
+    setState(() {
+      _audioUrl = url;
+    });
+  }
+
+  void _showTagPicker() {
+    showModalBottomSheet(
+        context: context,
+        builder: (ctx) {
+          return ListView(
+            children: _allTags
+                .map((t) => CheckboxListTile(
+                      title: Text(t['name']),
+                      value: _selectedTagIds.contains(t['id'].toString()),
+                      onChanged: (v) {
+                        setState(() {
+                          if (v == true) {
+                            _selectedTagIds.add(t['id'].toString());
+                          } else {
+                            _selectedTagIds.remove(t['id'].toString());
+                          }
+                        });
+                        Navigator.pop(ctx);
+                      },
+                    ))
+                .toList(),
+          );
+        });
+  }
+
+  void _back() async {
+    await _autoSave();
+    context.go('/notes_list');
   }
 
   @override
   Widget build(BuildContext context) {
-    final wordCount =
-        _quillController.document.toPlainText().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+    final wordCount = _quillController.document
+            .toPlainText()
+            .trim()
+            .split(RegExp(r'\s+'))
+            .where((w) => w.isNotEmpty)
+            .length;
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Static rect
-          Positioned(left: 0, top: 54, width: 390, height: 56, child: Container(color: Colors.white)),
-          // Header right rect (Save background)
-          Positioned(left: 316, top: 65, width: 58, height: 32, child: Container(color: const Color(0xff6366f1), borderRadius: BorderRadius.circular(8))),
-          // Back arrow
+          // Header background
+          Positioned(top: 0, left: 0, right: 0, height: 54, child: Container(
+              color: _noteColor.hexToColor())),
+          // Top bar
           Positioned(
-            left: 16,
-            top: 68,
-            width: 30,
-            height: 22,
-            child: GestureDetector(
-              onTap: () async {
-                await _autoSave();
-                context.go('/notes_list');
-              },
-              child: const Text('←', style: TextStyle(fontSize: 22, color: Color(0xff111827))),
-            ),
-          ),
-          // Save button
+              top: 65,
+              left: 16,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                color: Colors.black87,
+                onPressed: _back,
+              )),
           Positioned(
-            left: 327,
-            top: 75,
-            width: 48,
-            height: 22,
-            child: GestureDetector(
-              onTap: () => _saveNote(),
-              child: const Text('Save',
-                  style: TextStyle(fontSize: 14, color: Colors.white)),
-            ),
-          ),
-          // Pin toggle
+              top: 65,
+              right: 16,
+              child: TextButton(
+                  onPressed: _autoSave,
+                  child: const Text('Save', style: TextStyle(color: Colors.white)))),
+          // Color picker
           Positioned(
-            left: 260,
-            top: 68,
-            width: 32,
-            height: 32,
-            child: IconButton(
-              icon: Icon(
-                _isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                color: _isPinned ? Colors.black : Colors.grey,
-              ),
-              onPressed: () => setState(() => _isPinned = !_isPinned),
-            ),
-          ),
+              top: 110,
+              left: 0,
+              right: 0,
+              height: 48,
+              child: Container(
+                  color: Colors.grey[100],
+                  child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: 8,
+                      itemBuilder: (ctx, idx) {
+                        final colorHexes = const [
+                          '#ffffff',
+                          '#fef3c7',
+                          '#dbeafe',
+                          '#dcfce7',
+                          '#fce7f3',
+                          '#ede9fe',
+                          '#fee2e2',
+                          '#f3f4f6'
+                        ];
+                        final hex = colorHexes[idx];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _noteColor = hex;
+                              });
+                            },
+                            child: CircleAvatar(
+                              backgroundColor: hex.hexToColor(),
+                              radius: 12,
+                            ),
+                          ),
+                        );
+                      }))),
           // Title field
           Positioned(
-            left: 16,
-            top: 174,
-            width: 358,
-            height: 32,
-            child: TextField(
-              controller: _titleController,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration.collapsed(hintText: 'Title'),
-            ),
-          ),
-          // Color palette circles
+              top: 218,
+              left: 20,
+              right: 20,
+              child: TextField(
+                  controller: _titleController,
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.bold),
+                  decoration: const InputDecoration(border: InputBorder.none),
+                  onChanged: (_) => _autoSave())),
+          // Quill editor
           Positioned(
-            left: 20,
-            top: 122,
-            width: 248,
-            height: 28,
-            child: Row(
-              children: [
-                _colorCircle('#ffffff'),
-                _colorCircle('#fef3c7'),
-                _colorCircle('#dbeafe'),
-                _colorCircle('#dcfce7'),
-                _colorCircle('#fce7f3'),
-                _colorCircle('#ede9fe'),
-                _colorCircle('#fee2e2'),
-                _colorCircle('#f3f4f6'),
-              ],
-            ),
-          ),
-          // Toolbar
-          Positioned(
-            left: 16,
-            top: 232,
-            width: 358,
-            height: 44,
-            child: QuillSimpleToolbar(
-              controller: _quillController,
-              configurations: const QuillSimpleToolbarConfigurations(),
-            ),
-          ),
-          // Content editor
-          Positioned(
-            left: 0,
-            top: 262,
-            width: 390,
-            height: 380,
-            child: QuillEditor.basic(
-              controller: _quillController,
-              configurations:
-                  const QuillEditorConfigurations(placeholder: 'Start typing…'),
-            ),
-          ),
-          // Bottom toolbar icons
-          Positioned(
-            left: 16,
-            top: 678,
-            width: 170,
-            height: 56,
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.mic, color: Color(0xffef4444), size: 24),
-                  onPressed: _isRecording ? _stopRecording : _startRecording,
+              top: 262,
+              left: 0,
+              right: 0,
+              bottom: 704,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  children: [
+                    QuillSimpleToolbar(
+                      controller: _quillController,
+                      configurations:
+                          const QuillSimpleToolbarConfigurations(),
+                    ),
+                    Expanded(
+                      child: QuillEditor.basic(
+                          controller: _quillController,
+                          configurations: const QuillEditorConfigurations(
+                              placeholder: 'Start typing…')),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.image, color: Color(0xff3b82f6), size: 24),
-                  onPressed: _pickImage,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.alarm, color: Color(0xfff59e0b), size: 24),
-                  onPressed: _pickReminder,
-                ),
-              ],
-            ),
-          ),
-          // Word count
+              )),
+          // Tags row
           Positioned(
-            left: 320,
-            top: 630,
-            child: Text('$wordCount words',
-                style: const TextStyle(fontSize: 11, color: Color(0xff9ca3af))),
-          ),
-          // Static elements (rects, text, etc.) below are omitted for brevity
-          // They would be added similarly using Positioned widgets with the given coordinates.
+              bottom: 658,
+              left: 0,
+              right: 0,
+              height: 48,
+              child: SizedBox(
+                height: 48,
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    ..._selectedTagIds
+                        .map((id) => _buildTagChip(id))
+                        .toList(),
+                    ActionChip(
+                      label: const Text('+ Add tag'),
+                      onPressed: _showTagPicker,
+                    )
+                  ],
+                ),
+              )),
+          // Bottom bar
+          Positioned(
+              bottom: 704,
+              left: 0,
+              right: 0,
+              height: 56,
+              child: Container(
+                  color: Colors.grey[200],
+                  child: Row(
+                    children: [
+                      IconButton(
+                          icon: const Icon(Icons.image),
+                          onPressed: _pickImage),
+                      IconButton(
+                          icon: Icon(_isRecording ? Icons.stop : Icons.mic),
+                          onPressed: _isRecording
+                              ? _stopRecording
+                              : _startRecording),
+                      IconButton(
+                          icon: const Icon(Icons.alarm),
+                          onPressed: _pickAlarm),
+                      IconButton(
+                          icon: Icon(_isPinned ? Icons.star : Icons.star_border),
+                          onPressed: _togglePin),
+                      const Spacer(),
+                      Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Text('$wordCount words',
+                              style: const TextStyle(fontSize: 11))),
+                    ],
+                  ))),
         ],
       );
   }
 
-  Widget _colorCircle(String hex) {
-    return GestureDetector(
-      onTap: () => setState(() {
-        _backgroundColor = _parseColor(hex);
-      }),
-      child: Container(
-        width: 28,
-        height: 28,
-        margin: const EdgeInsets.symmetric(horizontal: 6),
-        decoration: BoxDecoration(
-          color: _parseColor(hex),
-          shape: BoxShape.circle,
-          border: Border.all(width: _backgroundColor == _parseColor(hex) ? 3 : 1,
-              color: _backgroundColor == _parseColor(hex) ? Colors.black87 : Colors.grey.shade300),
-        ),
+  Widget _buildTagChip(String tagId) {
+    final tag = _allTags.firstWhere((t) => t['id'].toString() == tagId,
+        orElse: () => null);
+    final tagName = tag?['name'] ?? '';
+    final tagColor = tag?['color'] ?? '#000000';
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: Chip(
+        label: Text(tagName),
+        backgroundColor: tagColor.hexToColor().withOpacity(0.2),
+        deleteIcon: const Icon(Icons.close, size: 14),
+        onDeleted: () {
+          setState(() {
+            _selectedTagIds.remove(tagId);
+          });
+        },
       );
   }
 }
 
-class Tag {
-  final String id;
-  final String name;
-  final String color;
-  Tag({required this.id, required this.name, required this.color});
+// Extension to convert hex string to Color
+extension HexColor on String {
+  Color hexToColor() {
+    final hex = replaceAll('#', '');
+    if (hex.length == 6) {
+      return Color(int.parse('FF$hex', radix: 16));
+    } else if (hex.length == 8) {
+      return Color(int.parse(hex, radix: 16));
+    } else {
+      return Colors.transparent;
+    }
+  }
 }
