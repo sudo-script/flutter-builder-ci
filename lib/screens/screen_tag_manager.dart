@@ -10,12 +10,13 @@ class TagManagerScreen extends StatefulWidget {
 }
 
 class _TagManagerScreenState extends State<TagManagerScreen> {
-  final TextEditingController _newTagController = TextEditingController();
+  final TextEditingController _tagNameController = TextEditingController();
   final TextEditingController _renameController = TextEditingController();
-  late final RealtimeChannel _channel;
-  String _editingTagId = '';
-  String _selectedColor = '#6366f1';
-  final List<Tag> _tags = [];
+  String _newTagColor = '#ffffff';
+  String? _editingTagId;
+  List<Tag> _tags = [];
+  final String _userId = Supabase.instance.client.auth.currentUser!.id;
+  RealtimeChannel? _channel;
 
   @override
   void initState() {
@@ -24,34 +25,35 @@ class _TagManagerScreenState extends State<TagManagerScreen> {
     _subscribe();
   }
 
+  @override
+  void dispose() {
+    _tagNameController.dispose();
+    _renameController.dispose();
+    if (_channel != null) {
+      Supabase.instance.client.removeChannel(_channel!);
+    }
+    super.dispose();
+  }
+
   Future<void> _fetchTags() async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return;
     try {
-      final tagsData = await Supabase.instance.client
+      final data = await Supabase.instance.client
           .from('tags')
-          .select('id, name, color')
-          .eq('user_id', userId)
-          .order('name', ascending: true)
-          .range(0, 99);
-      final List<Tag> fetchedTags = [];
-      for (var tagData in tagsData as List) {
-        final tagId = tagData['id'] as String;
-        final noteTagList = await Supabase.instance.client
-            .from('note_tags')
-            .select('*')
-            .eq('tag_id', tagId) as List;
-        final noteCount = noteTagList.length;
-        fetchedTags.add(Tag(
-            id: tagId,
-            name: tagData['name'] as String,
-            color: tagData['color'] as String,
-            noteCount: noteCount));
-      }
+          .select('id, name, color, note_tags(*)')
+          .eq('user_id', _userId)
+          .order('created_at', ascending: false)
+          .range(0, 100);
+      final List<Tag> tags = List<Tag>.from(data.map((e) {
+        final noteTags = e['note_tags'] as List<dynamic>?;
+        return Tag(
+          id: e['id'] as String,
+          name: e['name'] as String,
+          color: e['color'] as String,
+          count: noteTags?.length ?? 0,
+        );
+      }));
       setState(() {
-        _tags
-          ..clear()
-          ..addAll(fetchedTags);
+        _tags = tags;
       });
     } catch (e) {
       // Handle error
@@ -59,298 +61,303 @@ class _TagManagerScreenState extends State<TagManagerScreen> {
   }
 
   void _subscribe() {
-    _channel = Supabase.instance.client.channel('public:tags').onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'tags',
-        callback: (payload) {
-      _fetchTags();
-    }).subscribe();
-  }
-
-  @override
-  void dispose() {
-    Supabase.instance.client.removeChannel(_channel);
-    _newTagController.dispose();
-    _renameController.dispose();
-    super.dispose();
+    _channel = Supabase.instance.client
+        .channel('public:tags')
+        .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'tags',
+            callback: (payload) {
+          _fetchTags();
+        })
+        .subscribe();
   }
 
   Future<void> _addTag() async {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return;
-    final name = _newTagController.text.trim();
+    final name = _tagNameController.text.trim();
     if (name.isEmpty) return;
     try {
       await Supabase.instance.client
           .from('tags')
-          .insert({'user_id': userId, 'name': name, 'color': _selectedColor});
-      _newTagController.clear();
-      _selectedColor = '#6366f1';
+          .insert({
+        'user_id': _userId,
+        'name': name,
+        'color': _newTagColor,
+      });
+      _tagNameController.clear();
+      _newTagColor = '#ffffff';
       _fetchTags();
     } catch (e) {
       // Handle error
     }
   }
 
-  Future<void> _renameTag(Tag tag) async {
-    final newName = _renameController.text.trim();
-    if (newName.isEmpty) return;
+  Future<void> _renameTag(String id, String newName) async {
     try {
       await Supabase.instance.client
           .from('tags')
           .update({'name': newName})
-          .eq('id', tag.id);
-      _editingTagId = '';
+          .eq('id', id);
       _fetchTags();
     } catch (e) {
       // Handle error
     }
   }
 
-  Future<void> _updateColor(Tag tag, String color) async {
+  Future<void> _updateTagColor(String id, String color) async {
     try {
       await Supabase.instance.client
           .from('tags')
           .update({'color': color})
-          .eq('id', tag.id);
+          .eq('id', id);
       _fetchTags();
     } catch (e) {
       // Handle error
     }
   }
 
-  Future<void> _deleteTag(Tag tag) async {
-    try {
-      if (tag.noteCount > 0) {
-        final confirm = await showDialog<bool>(
+  Future<void> _deleteTag(String id, int count) async {
+    bool confirm = true;
+    if (count > 0) {
+      confirm = await showDialog<bool>(
             context: context,
             builder: (ctx) => AlertDialog(
-                  title: const Text('Delete Tag'),
-                  content: Text(
-                      'This tag is assigned to ${tag.noteCount} notes. Are you sure you want to delete it?'),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('Cancel')),
-                    TextButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('Delete')),
-                  ],
-                ));
-        if (confirm != true) return;
-      }
+              title: const Text('Delete tag with notes?'),
+              content:
+                  const Text('This tag is associated with notes. Are you sure?'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel')),
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Delete')),
+              ],
+            )) ??
+        false;
+    }
+    if (!confirm) return;
+    try {
       await Supabase.instance.client
           .from('tags')
           .delete()
-          .eq('id', tag.id);
+          .eq('id', id);
       _fetchTags();
     } catch (e) {
       // Handle error
     }
   }
 
-  void _showColorPicker({String? tagId, bool isNew = true}) {
-    final colors = const [
-      '#ffffff',
-      '#fef3c7',
-      '#dbeafe',
-      '#dcfce7',
-      '#fce7f3',
-      '#ede9fe',
-      '#fee2e2',
-      '#f3f4f6'
-    ];
-    showModalBottomSheet(
+  Future<void> _showColorPicker(
+      {required BuildContext context,
+      String? currentColor,
+      required Function(String) onColorSelected}) async {
+    final palette = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7',
+      '#fce7f3', '#ede9fe', '#fee2e2', '#f3f4f6'];
+    await showModalBottomSheet(
         context: context,
-        builder: (_) => Padding(
-              padding: const EdgeInsets.all(16),
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: colors.map((c) {
-                  return GestureDetector(
-                    onTap: () {
-                      if (isNew) {
-                        setState(() {
-                          _selectedColor = c;
-                        });
-                      } else if (tagId != null) {
-                        final tag =
-                            _tags.firstWhere((t) => t.id == tagId);
-                        _updateColor(tag, c);
-                      }
-                      Navigator.pop(context);
-                    },
-                    child: CircleAvatar(
-                      backgroundColor: Color(int.parse(c.replaceFirst('#', '0xFF'))),
-                      radius: 20,
+        builder: (_) {
+          return SizedBox(
+            height: 120,
+            child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4, mainAxisSpacing: 8, crossAxisSpacing: 8),
+              itemCount: palette.length,
+              itemBuilder: (_, i) {
+                final colorHex = palette[i];
+                final color =
+                    Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    onColorSelected(colorHex);
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        width: currentColor == colorHex ? 3 : 1,
+                        color: Colors.black,
+                      ),
                     ),
-                  );
-                }).toList(),
+                  ),
+                );
+              },
+            ),
+          );
+        });
+  }
+
+  Widget _buildAddTagRow() {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: () => _showColorPicker(
+              context: context,
+              currentColor: _newTagColor,
+              onColorSelected: (c) => setState(() => _newTagColor = c)),
+          child: CircleAvatar(
+            radius: 14,
+            backgroundColor: Color(
+                int.parse(_newTagColor.replaceFirst('#', '0xFF'))),
+          ),
+        ),
+        SizedBox(width: 8),
+        Expanded(
+          child: TextField(
+            controller: _tagNameController,
+            decoration: const InputDecoration(
+              hintText: 'New tag name…',
+              hintStyle: TextStyle(color: Colors.grey),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ),
+        SizedBox(width: 8),
+        ElevatedButton(
+            onPressed: _addTag, child: const Text('+')),
+      ],
+  }
+
+  Widget _buildTagItem(Tag tag) {
+    final isEditing = _editingTagId == tag.id;
+    return Dismissible(
+      key: ValueKey(tag.id),
+      background: Container(
+        color: Colors.blue,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        alignment: Alignment.centerLeft,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.archive, color: Colors.white),
+            SizedBox(height: 4),
+            Text('Archive', style: TextStyle(color: Colors.white, fontSize: 11)),
+          ],
+        ),
+      ),
+      secondaryBackground: Container(
+        color: Colors.red,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        alignment: Alignment.centerRight,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.delete, color: Colors.white),
+            SizedBox(height: 4),
+            Text('Delete', style: TextStyle(color: Colors.white, fontSize: 11)),
+          ],
+        ),
+      ),
+      confirmDismiss: (direction) async =>
+          direction == DismissDirection.endToStart
+              ? await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Delete tag?'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Cancel')),
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Delete')),
+                    ],
+                  ),
+                ) ??
+                false
+              : true,
+      onDismissed: (direction) {
+        if (direction == DismissDirection.endToStart) {
+          _deleteTag(tag.id, tag.count);
+        } else {
+          // Archive logic if needed
+        }
+      },
+      child: ListTile(
+        leading: GestureDetector(
+          onTap: () => _showColorPicker(
+              context: context,
+              currentColor: tag.color,
+              onColorSelected: (c) => _updateTagColor(tag.id, c)),
+          child: CircleAvatar(
+              backgroundColor:
+                  Color(int.parse(tag.color.replaceFirst('#', '0xFF')))),
+        ),
+        title: isEditing
+            ? TextField(
+                controller: _renameController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Rename…',
+                ),
+                onSubmitted: (val) {
+                  if (val.trim().isNotEmpty) {
+                    _renameTag(tag.id, val.trim());
+                  }
+                  setState(() => _editingTagId = null);
+                },
+              )
+            : GestureDetector(
+                onDoubleTap: () {
+                  setState(() {
+                    _editingTagId = tag.id;
+                    _renameController.text = tag.name;
+                  });
+                },
+                child: Text(tag.name),
               ),
-            ));
+        trailing: Text('${tag.count} notes',
+            style: const TextStyle(color: Colors.grey)),
+      );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text('← Tags'),
+        backgroundColor: Colors.white,
         leading: IconButton(
-            icon: const Icon(Icons.arrow_back), onPressed: () => context.go('/notes_list')),
-        title: const Text('Tags'),
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => context.go('/notes_list'),
+        ),
         actions: [
           TextButton(
               onPressed: () => context.go('/notes_list'),
-              child: const Text('Done', style: TextStyle(color: Colors.white)))
+              child: const Text('Done'))
         ],
       ),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => _showColorPicker(isNew: true),
-                    child: CircleAvatar(
-                      backgroundColor:
-                          Color(int.parse(_selectedColor.replaceFirst('#', '0xFF'))),
-                      radius: 15,
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: _newTagController,
-                      decoration: const InputDecoration(
-                          hintText: 'New tag name…',
-                          border: OutlineInputBorder()),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: _addTag,
-                    child: const Text('+'),
-                  ),
-                ],
-              ),
-              SizedBox(height: 24),
-              Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('YOUR TAGS',
-                      style: TextStyle(
-                          color: Color(0xff6b7280),
-                          fontSize: 10))),
-              SizedBox(height: 8),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildAddTagRow(),
+            SizedBox(height: 24),
+            const Text('YOUR TAGS',
+                style: TextStyle(
+                  color: Color(0xFF6B7280),
+                  fontSize: 10,
+                )),
+            SizedBox(height: 12),
+            if (_tags.isEmpty)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(child: Text('No tags found.')),
+              )
+            else
               ListView.builder(
-                shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
                 itemCount: _tags.length,
-                itemBuilder: (context, index) {
-                  final tag = _tags[index];
-                  return Dismissible(
-                    key: ValueKey(tag.id),
-                    direction: DismissDirection.horizontal,
-                    background: Container(
-                      color: Colors.blue[200],
-                      alignment: Alignment.centerLeft,
-                      padding:
-                          const EdgeInsets.only(left: 20),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.archive, color: Colors.white),
-                          Text('Archive',
-                              style: TextStyle(
-                                  color: Colors.white, fontSize: 11)),
-                        ],
-                      ),
-                    ),
-                    secondaryBackground: Container(
-                      color: Colors.red[200],
-                      alignment: Alignment.centerRight,
-                      padding:
-                          const EdgeInsets.only(right: 20),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.delete, color: Colors.white),
-                          Text('Delete',
-                              style: TextStyle(
-                                  color: Colors.white, fontSize: 11)),
-                        ],
-                      ),
-                    ),
-                    confirmDismiss: (direction) async {
-                      if (direction == DismissDirection.endToStart &&
-                          tag.noteCount > 0) {
-                        final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                                  title: const Text('Delete tag?'),
-                                  content: Text(
-                                      'This tag is used in ${tag.noteCount} notes. Delete?'),
-                                  actions: [
-                                    TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(ctx, false),
-                                        child: const Text('Cancel')),
-                                    TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(ctx, true),
-                                        child: const Text('Delete')),
-                                  ],
-                                ));
-                        return confirm == true;
-                      }
-                      return true;
-                    },
-                    onDismissed: (direction) {
-                      if (direction == DismissDirection.endToStart) {
-                        _deleteTag(tag);
-                      } else {
-                        // Archive can be implemented if needed
-                      }
-                    },
-                    child: InkWell(
-                      onDoubleTap: () {
-                        setState(() {
-                          _editingTagId = tag.id;
-                          _renameController.text = tag.name;
-                        });
-                      },
-                      child: ListTile(
-                        leading: GestureDetector(
-                          onTap: () =>
-                              _showColorPicker(tagId: tag.id, isNew: false),
-                          child: CircleAvatar(
-                            backgroundColor: Color(
-                                int.parse(tag.color.replaceFirst('#', '0xFF'))),
-                            radius: 15,
-                          ),
-                        ),
-                        title: _editingTagId == tag.id
-                            ? TextField(
-                                controller: _renameController,
-                                decoration: const InputDecoration(
-                                    border: OutlineInputBorder()),
-                                onSubmitted: (_) => _renameTag(tag),
-                              )
-                            : Text(tag.name),
-                        subtitle: Text('${tag.noteCount} notes'),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.cancel, color: Colors.grey),
-                          onPressed: () => _deleteTag(tag),
-                        ),
-                      ),
-                    ),
-                  );
-                },
+                itemBuilder: (_, i) => _buildTagItem(_tags[i]),
               ),
-            ],
-          ),
+            SizedBox(height: 100),
+          ],
         ),
       );
   }
@@ -360,10 +367,11 @@ class Tag {
   final String id;
   final String name;
   final String color;
-  final int noteCount;
+  final int count;
+
   Tag(
       {required this.id,
       required this.name,
       required this.color,
-      required this.noteCount});
+      required this.count});
 }

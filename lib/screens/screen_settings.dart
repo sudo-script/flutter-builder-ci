@@ -11,17 +11,14 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late String _email;
-  late String _memberSince;
   bool _darkMode = false;
   String _defaultColor = '#ffffff';
   int _fontSize = 16;
   String _sortBy = 'Updated';
-  bool _backupEnabled = false;
 
-  final List<int> _fontSizeOptions = [12, 14, 16, 18, 20];
-  final List<String> _sortByOptions = ['Updated', 'Created', 'Title'];
-  final List<String> _colorPalette = [
+  String _email = '';
+  String _memberSince = '';
+  static const List<String> _colors = [
     '#ffffff',
     '#fef3c7',
     '#dbeafe',
@@ -31,6 +28,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     '#fee2e2',
     '#f3f4f6',
   ];
+
+  final List<int> _fontSizeOptions = [12, 14, 16, 18, 20];
+  final List<String> _sortOptions = ['Updated', 'Created', 'Title'];
 
   @override
   void initState() {
@@ -46,20 +46,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _defaultColor = prefs.getString('defaultColor') ?? '#ffffff';
       _fontSize = prefs.getInt('fontSize') ?? 16;
       _sortBy = prefs.getString('sortBy') ?? 'Updated';
-      _backupEnabled = prefs.getBool('backupEnabled') ?? false;
     });
   }
 
   Future<void> _loadUserInfo() async {
     final user = Supabase.instance.client.auth.currentUser;
-    setState(() {
-      _email = user?.email ?? 'No Email';
-      final createdAt = user?.createdAt;
-      _memberSince = createdAt != null ? createdAt.year.toString() : 'Unknown';
-    });
+    if (user != null) {
+      final createdAt = user.createdAt;
+      String month = 'Jan';
+      if (createdAt != null) {
+        month = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ][createdAt.month - 1];
+      }
+      setState(() {
+        _email = user.email ?? '';
+        _memberSince = '$month ${createdAt?.year ?? ''}';
+      });
+    }
   }
 
-  Future<void> _setDarkMode(bool value) async {
+  Future<void> _saveDarkMode(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('darkMode', value);
     setState(() {
@@ -67,7 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  Future<void> _setDefaultColor(String color) async {
+  Future<void> _saveDefaultColor(String color) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('defaultColor', color);
     setState(() {
@@ -75,7 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  Future<void> _setFontSize(int size) async {
+  Future<void> _saveFontSize(int size) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('fontSize', size);
     setState(() {
@@ -83,7 +101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  Future<void> _setSortBy(String value) async {
+  Future<void> _saveSortBy(String value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('sortBy', value);
     setState(() {
@@ -91,86 +109,102 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  Future<void> _handleSignOut() async {
+  Future<void> _showColorPicker() async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Select Default Note Color'),
+          content: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _colors.map((c) {
+              return GestureDetector(
+                onTap: () {
+                  _saveDefaultColor(c);
+                  Navigator.pop(ctx);
+                },
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Color(int.parse(c.replaceFirst('#', '0xFF'))),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      width: _defaultColor == c ? 3 : 1,
+                      color: _defaultColor == c ? Colors.black87 : Colors.grey.shade300,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
+  }
+
+  Future<void> _confirmSignOut() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Confirm Sign Out'),
+          content: const Text('Are you sure you want to sign out?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Sign Out'),
+            ),
+          ],
+        );
+      },
     );
     if (confirm == true) {
-      await Supabase.instance.client.auth.signOut();
-      context.go('/auth');
+      try {
+        await Supabase.instance.client.auth.signOut();
+        context.go('/auth');
+      } catch (e) {
+        // Handle error if needed
+      }
     }
   }
 
-  void _showColorPicker() {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Select Default Note Color'),
-        content: Wrap(
-          spacing: 8,
-          children: _colorPalette.map((c) {
-            return GestureDetector(
-              onTap: () {
-                _setDefaultColor(c);
-                Navigator.pop(ctx);
-              },
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: Color(int.parse(c.replaceFirst('#', '0xFF'))),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    width: _defaultColor == c ? 3 : 1,
-                    color: _defaultColor == c
-                        ? Colors.black87
-                        : Colors.grey.shade300,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      );
+  Future<void> _backupComingSoon() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Coming Soon'));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Account Section
             SizedBox(height: 54),
-            const Text(
-              'Settings',
-              style: TextStyle(fontSize: 22, color: Color(0xFF111827)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Settings',
+                style: const TextStyle(color: Color(0xFF111827), fontSize: 22),
+              ),
             ),
-            SizedBox(height: 4),
-            Text(
-              'ACCOUNT',
-              style: TextStyle(fontSize: 10, color: Color(0xFF6b7280)),
+            SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'ACCOUNT',
+                style: const TextStyle(color: Color(0xFF6B7280), fontSize: 10),
+              ),
             ),
             SizedBox(height: 8),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.all(16),
               color: Colors.white,
               child: Row(
                 children: [
@@ -178,13 +212,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     backgroundColor: const Color(0xFF6366F1),
                     child: Text(
                       _email.isNotEmpty ? _email[0].toUpperCase() : '',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                      ),
+                      style: const TextStyle(color: Colors.white),
                     ),
                   ),
-                  SizedBox(width: 12),
+                  SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,15 +223,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Text(
                           _email,
                           style: const TextStyle(
-                            fontSize: 15,
                             color: Color(0xFF111827),
+                            fontSize: 15,
+                          ),
+                        ),
+                        Text(
+                          'U',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
                           ),
                         ),
                         Text(
                           'Free plan · Member since $_memberSince',
                           style: const TextStyle(
-                            fontSize: 12,
                             color: Color(0xFF9CA3AF),
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -209,205 +247,256 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
-            const Divider(
-              color: Color(0xFFE5E7EB),
-              height: 1,
+            SizedBox(height: 24),
+            Divider(color: const Color(0xFFE5E7EB)),
+            SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'PREFERENCES',
+                style: const TextStyle(color: Color(0xFF6B7280), fontSize: 10),
+              ),
             ),
             SizedBox(height: 8),
-            Text(
-              'PREFERENCES',
-              style: TextStyle(fontSize: 10, color: Color(0xFF6b7280)),
-            ),
-            SizedBox(height: 8),
-            // Dark Mode
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               color: Colors.white,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
                     'Dark Mode',
-                    style: TextStyle(fontSize: 15, color: Color(0xFF111827)),
+                    style: TextStyle(
+                      color: Color(0xFF111827),
+                      fontSize: 15,
+                    ),
                   ),
+                  const Spacer(),
                   Switch(
                     value: _darkMode,
-                    onChanged: _setDarkMode,
+                    onChanged: (val) async {
+                      await _saveDarkMode(val);
+                    },
                   ),
                 ],
               ),
             ),
-            const Divider(
-              color: Color(0xFFE5E7EB),
-              height: 1,
-            ),
-            // Default Note Color
+            SizedBox(height: 12),
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               color: Colors.white,
-              child: InkWell(
-                onTap: _showColorPicker,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Default note color',
-                      style: TextStyle(fontSize: 15, color: Color(0xFF111827)),
+              child: Row(
+                children: [
+                  const Text(
+                    'Default note color',
+                    style: TextStyle(
+                      color: Color(0xFF111827),
+                      fontSize: 15,
                     ),
-                    Container(
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: _showColorPicker,
+                    child: Container(
                       width: 24,
                       height: 24,
                       decoration: BoxDecoration(
-                        color: Color(
-                            int.parse(_defaultColor.replaceFirst('#', '0xFF'))),
-                        borderRadius: BorderRadius.circular(4),
+                        color:
+                            Color(int.parse(_defaultColor.replaceFirst('#', '0xFF'))),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFFE5E7EB),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.white,
+              child: Row(
+                children: [
+                  const Text(
+                    'Editor font size',
+                    style: TextStyle(
+                      color: Color(0xFF111827),
+                      fontSize: 15,
+                    ),
+                  ),
+                  const Spacer(),
+                  DropdownButton<int>(
+                    value: _fontSize,
+                    items: _fontSizeOptions
+                        .map(
+                          (size) => DropdownMenuItem<int>(
+                            value: size,
+                            child: Text(
+                              size.toString(),
+                              style: const TextStyle(
+                                color: Color(0xFF6B7280),
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) _saveFontSize(val);
+                    },
+                    underline: SizedBox(),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.white,
+              child: Row(
+                children: [
+                  const Text(
+                    'Sort notes by',
+                    style: TextStyle(
+                      color: Color(0xFF111827),
+                      fontSize: 15,
+                    ),
+                  ),
+                  const Spacer(),
+                  DropdownButton<String>(
+                    value: _sortBy,
+                    items: _sortOptions
+                        .map(
+                          (opt) => DropdownMenuItem<String>(
+                            value: opt,
+                            child: Text(
+                              opt,
+                              style: const TextStyle(
+                                color: Color(0xFF6B7280),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) _saveSortBy(val);
+                    },
+                    underline: SizedBox(),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 24),
+            Divider(color: const Color(0xFFE5E7EB)),
+            SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'STORAGE',
+                style: const TextStyle(color: Color(0xFF6B7280), fontSize: 10),
+              ),
+            ),
+            SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.white,
+              child: InkWell(
+                onTap: _backupComingSoon,
+                child: Row(
+                  children: [
+                    const Text(
+                      'iCloud / Google Drive backup',
+                      style: TextStyle(
+                        color: Color(0xFF111827),
+                        fontSize: 15,
+                      ),
+                    ),
+                    const Spacer(),
+                    const Text(
+                      'Off',
+                      style: TextStyle(
+                        color: Color(0xFF9CA3AF),
+                        fontSize: 13,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            const Divider(
-              color: Color(0xFFE5E7EB),
-              height: 1,
-            ),
-            // Editor Font Size
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              color: Colors.white,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Editor font size',
-                    style: TextStyle(fontSize: 15, color: Color(0xFF111827)),
-                  ),
-                  DropdownButton<int>(
-                    value: _fontSize,
-                    items: _fontSizeOptions
-                        .map((size) => DropdownMenuItem<int>(
-                              value: size,
-                              child: Text(size.toString()),
-                            ))
-                        .toList(),
-                    onChanged: _setFontSize,
-                  ),
-                ],
-              ),
-            ),
-            const Divider(
-              color: Color(0xFFE5E7EB),
-              height: 1,
-            ),
-            // Sort Notes By
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              color: Colors.white,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Sort notes by',
-                    style: TextStyle(fontSize: 15, color: Color(0xFF111827)),
-                  ),
-                  DropdownButton<String>(
-                    value: _sortBy,
-                    items: _sortByOptions
-                        .map((option) => DropdownMenuItem<String>(
-                              value: option,
-                              child: Text(option),
-                            ))
-                        .toList(),
-                    onChanged: _setSortBy,
-                  ),
-                ],
-              ),
-            ),
-            const Divider(
-              color: Color(0xFFE5E7EB),
-              height: 1,
-            ),
-            // Storage
-            Text(
-              'STORAGE',
-              style: TextStyle(fontSize: 10, color: Color(0xFF6b7280)),
-            ),
+            SizedBox(height: 24),
+            Divider(color: const Color(0xFFE5E7EB)),
             SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              color: Colors.white,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'iCloud / Google Drive backup',
-                    style: TextStyle(fontSize: 15, color: Color(0xFF111827)),
-                  ),
-                  Switch(
-                    value: _backupEnabled,
-                    onChanged: (value) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Coming Soon')),
-                      );
-                    },
-                  ),
-                ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'ABOUT',
+                style: const TextStyle(color: Color(0xFF6B7280), fontSize: 10),
               ),
             ),
-            const Divider(
-              color: Color(0xFFE5E7EB),
-              height: 1,
-            ),
-            // About
-            Text(
-              'ABOUT',
-              style: TextStyle(fontSize: 10, color: Color(0xFF6b7280)),
-            ),
-            SizedBox(height: 8),
+            const SizedSizedBox(height: 8),
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               color: Colors.white,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  Text(
+                children: [
+                  const Text(
                     'Version',
-                    style: TextStyle(fontSize: 15, color: Color(0xFF111827)),
+                    style: TextStyle(
+                      color: Color(0xFF111827),
+                      fontSize: 15,
+                    ),
                   ),
-                  Text(
+                  const Spacer(),
+                  const Text(
                     '1.0.0',
-                    style: TextStyle(fontSize: 15, color: Color(0xFF6b7280)),
+                    style: TextStyle(
+                      color: Color(0xFF6B7280),
+                      fontSize: 15,
+                    ),
                   ),
                 ],
               ),
             ),
-            const Divider(
-              color: Color(0xFFE5E7EB),
-              height: 1,
+            SizedBox(height: 24),
+            Divider(color: const Color(0xFFE5E7EB)),
+            SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'SIGN OUT',
+                style: const TextStyle(color: Color(0xFF6B7280), fontSize: 10),
+              ),
             ),
-            SizedBox(height: 16),
-            // Sign Out
-            Center(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  minimumSize: const Size(200, 52),
-                ),
-                onPressed: _handleSignOut,
+            SizedBox(height: 8),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              width: double.infinity,
+              height: 52,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEE2E2),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: TextButton(
+                onPressed: _confirmSignOut,
                 child: const Text(
                   'Sign Out',
-                  style: TextStyle(fontSize: 16, color: Colors.white),
+                  style: TextStyle(
+                    color: Color(0xFFEF4444),
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ),
+            SizedBox(height: 32),
           ],
         ),
       );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 }
