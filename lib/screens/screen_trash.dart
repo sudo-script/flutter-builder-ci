@@ -10,9 +10,8 @@ class TrashScreen extends StatefulWidget {
 }
 
 class _TrashScreenState extends State<TrashScreen> {
-  late final RealtimeChannel _channel;
   List<Map<String, dynamic>> _notes = [];
-  bool _isLoading = true;
+  late final RealtimeChannel _channel;
 
   @override
   void initState() {
@@ -21,102 +20,78 @@ class _TrashScreenState extends State<TrashScreen> {
     _subscribe();
   }
 
-  @override
-  void dispose() {
-    Supabase.instance.client.removeChannel(_channel);
-    super.dispose();
+  Future<void> _fetchNotes() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+      final data = await Supabase.instance.client
+          .from('notes')
+          .select('*, note_tags(tag_id, tags(id,name,color))')
+          .eq('user_id', user.id)
+          .not('deleted_at', 'is', null)
+          .order('deleted_at', ascending: false);
+      if (!mounted) return;
+      setState(() {
+        _notes = List<Map<String, dynamic>>.from(data);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load trash: $e')));
+    }
   }
 
   void _subscribe() {
     _channel = Supabase.instance.client
         .channel('public:notes')
         .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'notes',
-            callback: (payload) => _fetchNotes())
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'notes',
+          callback: (payload) {
+            _fetchNotes();
+          },
+        )
         .subscribe();
   }
 
-  Future<void> _fetchNotes() async {
-    try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
-      final list = await Supabase.instance.client
-          .from('notes')
-          .select('id, title, plain_text, deleted_at, updated_at, user_id')
-          .eq('user_id', userId)
-          .isFilter('deleted_at', null)
-          .order('deleted_at', ascending: false);
-      setState(() {
-        _notes = List<Map<String, dynamic>>.from(list);
-        _isLoading = false;
-      });
-    } catch (_) {
-      setState(() {
-        _isLoading = false;
-        _notes = [];
-      });
-    }
+  @override
+  void dispose() {
+    Supabase.instance.client.removeChannel(_channel);
+    super.dispose();
   }
 
-  Future<void> _restoreNote(String noteId) async {
+  Future<void> _restoreNote(String id) async {
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
       await Supabase.instance.client
           .from('notes')
           .update({'deleted_at': null})
-          .eq('id', noteId)
-          .eq('user_id', userId);
+          .eq('id', id)
+          .eq('user_id', user.id);
+      _fetchNotes();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Note restored')),
+        SnackBar(content: Text('Note restored')),
       );
-      await _fetchNotes();
-    } catch (_) {
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error restoring note'));
+        SnackBar(content: Text('Restore failed: $e')));
     }
   }
 
-  Future<void> _deleteNotePermanently(String noteId) async {
-    try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
-      await Supabase.instance.client
-          .from('note_tags')
-          .delete()
-          .eq('note_id', noteId)
-          .eq('user_id', userId);
-      await Supabase.instance.client
-          .from('notes')
-          .delete()
-          .eq('id', noteId)
-          .eq('user_id', userId);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Note permanently deleted')),
-      );
-      await _fetchNotes();
-    } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error deleting note'));
-    }
-  }
-
-  Future<void> _emptyTrash() async {
+  Future<void> _deleteNote(String id) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Empty Trash'),
-        content:
-            const Text('All deleted notes will be permanently removed.'),
+        title: const Text('Delete note permanently?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Delete'),
           ),
         ],
@@ -124,229 +99,255 @@ class _TrashScreenState extends State<TrashScreen> {
     );
     if (confirm != true) return;
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
       await Supabase.instance.client
           .from('notes')
           .delete()
-          .eq('user_id', userId)
-          .not('deleted_at', 'is', null);
+          .eq('id', id)
+          .eq('user_id', user.id);
+      _fetchNotes();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Trash emptied')),
+        SnackBar(content: Text('Note permanently deleted')),
       );
-      await _fetchNotes();
-    } catch (_) {
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error emptying trash'));
+        SnackBar(content: Text('Delete failed: $e')));
     }
   }
 
-  int _daysAgo(DateTime deletedAt) =>
-      DateTime.now().difference(deletedAt).inDays;
-  int _daysLeft(int daysAgo) => 30 - daysAgo;
+  Future<void> _emptyTrash() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Empty Trash?'),
+        content: const Text('All notes in trash will be permanently deleted.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Empty'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+      await Supabase.instance.client
+          .from('notes')
+          .delete()
+          .eq('user_id', user.id)
+          .not('deleted_at', 'is', null);
+      _fetchNotes();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Trash emptied')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to empty trash: $e')));
+    }
+  }
+
+  int _daysSinceDeleted(String isoDate) {
+    final deleted = DateTime.parse(isoDate);
+    return DateTime.now().difference(deleted).inDays;
+  }
+
+  int _daysRemaining(String isoDate) {
+    final days = _daysSinceDeleted(isoDate);
+    return 30 - days;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/notes_list'),
+        ),
+        title: const Text('Trash'),
+        actions: [
+          TextButton(
+            onPressed: _emptyTrash,
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+            ),
+            child: const Text(
+              'Empty Trash',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [
             Container(
-              height: 56,
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => context.go('/notes_list'),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'Trash',
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _emptyTrash,
-                    child: const Text(
-                      'Empty Trash',
-                      style: TextStyle(color: Color(0xFFEF4444)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              height: 40,
               width: double.infinity,
-              color: const Color(0xFFFFFBEB),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              alignment: Alignment.centerLeft,
-              child: const Text(
-                '⚠️  Notes are permanently deleted after 30 days',
-                style: TextStyle(fontSize: 12, color: Color(0xFF92400E)),
+              height: 56,
+              color: const Color(0xFFFFFFFF),
+              child: const Center(
+                child: Text(
+                  '⚠️  Notes are permanently deleted after 30 days',
+                  style: TextStyle(color: Color(0xFF92400E), fontSize: 12),
+                ),
               ),
             ),
-            SizedBox(height: 8),
-            _isLoading
-                ? Padding(
-                    padding: EdgeInsets.all(20),
-                    child: CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            _notes.isEmpty
+                ? Column(
+                    children: [
+                      const Icon(
+                        Icons.delete_outline,
+                        size: 96,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Your trash is empty',
+                        style: TextStyle(
+                            color: Color(0xFF6B7280), fontSize: 18),
+                      ),
+                    ],
                   )
-                : _notes.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 60),
-                        child: Column(
-                          children: [
-                            const Icon(Icons.delete_outline,
-                                size: 80, color: Colors.grey),
-                            SizedBox(height: 16),
-                            const Text(
-                              'Trash is empty',
-                              style:
-                                  TextStyle(fontSize: 16, color: Colors.grey),
-                            ),
-                          ],
+                : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _notes.length,
+                    itemBuilder: (ctx, index) {
+                      final note = _notes[index];
+                      final deletedAt = note['deleted_at'] as String;
+                      final daysAgo = _daysSinceDeleted(deletedAt);
+                      final daysLeft = _daysRemaining(deletedAt);
+                      return Dismissible(
+                        key: ValueKey(note['id']),
+                        background: Container(
+                          color: Colors.green,
+                          alignment: Alignment.centerLeft,
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            children: const [
+                              Icon(Icons.restore, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text('Restore',
+                                  style: TextStyle(color: Colors.white)),
+                            ],
+                          ),
                         ),
-                      )
-                    : ListView.separated(
-                        physics: const NeverScrollableScrollPhysics(),
-                        shrinkWrap: true,
-                        itemCount: _notes.length,
-                        separatorBuilder: (ctx, idx) => const Divider(
-                          height: 1,
-                          color: Color(0xFFE5E7EB),
+                        secondaryBackground: Container(
+                          color: Colors.red,
+                          alignment: Alignment.centerRight,
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: const [
+                              Text('Delete',
+                                  style: TextStyle(color: Colors.white)),
+                              SizedBox(width: 8),
+                              Icon(Icons.delete, color: Colors.white),
+                            ],
+                          ),
                         ),
-                        itemBuilder: (ctx, idx) {
-                          final note = _notes[idx];
-                          final deletedAt =
-                              DateTime.parse(note['deleted_at'] as String);
-                          final daysAgo = _daysAgo(deletedAt);
-                          final daysLeft = _daysLeft(daysAgo);
-                          return Dismissible(
-                            key: ValueKey(note['id'] as String),
-                            confirmDismiss: (direction) async {
-                              if (direction ==
-                                      DismissDirection.endToStart ||
-                                  direction == DismissDirection.startToEnd) {
-                                if (direction ==
-                                    DismissDirection.endToStart) {
-                                  final ok = await showDialog<bool>(
-                                      context: context,
-                                      builder: (ctx) => AlertDialog(
-                                            title: const Text(
-                                                'Delete permanently?'),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(ctx, false),
-                                                child: const Text('Cancel'),
-                                              ),
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(ctx, true),
-                                                child: const Text('Delete'),
-                                              ),
-                                            ],
-                                          ));
-                                  return ok == true;
-                                }
-                                return true;
-                              }
-                              return false;
-                            },
-                            background: Container(
-                              color: Colors.blue,
-                              alignment: Alignment.centerLeft,
-                              padding: const EdgeInsets.only(left: 20),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Icon(Icons.restore, color: Colors.white),
-                                  SizedBox(width: 6),
-                                  Text('Restore',
-                                      style: TextStyle(color: Colors.white)),
+                        confirmDismiss: (direction) async {
+                          if (direction == DismissDirection.endToStart) {
+                            final res = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text(
+                                    'Delete note permanently?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(true),
+                                    child: const Text('Delete'),
+                                  ),
                                 ],
                               ),
-                            ),
-                            secondaryBackground: Container(
-                              color: Colors.red,
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 20),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Icon(Icons.delete, color: Colors.white),
-                                  SizedBox(width: 6),
-                                  Text('Delete',
-                                      style: TextStyle(color: Colors.white)),
-                                ],
-                              ),
-                            ),
-                            onDismissed: (direction) async {
-                              if (direction == DismissDirection.endToStart) {
-                                await _deleteNotePermanently(
-                                    note['id'] as String);
-                              } else {
-                                await _restoreNote(note['id'] as String);
-                              }
-                            },
-                            child: Card(
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              color: const Color(0xFFF9FAFB),
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                            );
+                            return res == true;
+                          }
+                          return true;
+                        },
+                        onDismissed: (direction) {
+                          if (direction == DismissDirection.endToStart) {
+                            _deleteNote(note['id'] as String);
+                          } else {
+                            _restoreNote(note['id'] as String);
+                          }
+                        },
+                        child: Card(
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  note['title'] ?? 'Untitled',
+                                  style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Color(0xFF6B7280)),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  (note['plain_text'] as String? ?? '')
+                                      .replaceAll('\n', ' ')
+                                      .substring(0, 50)
+                                      .replaceAll(RegExp(r'\s+'), ' '),
+                                  style: const TextStyle(
+                                      color: Color(0xFF9CA3AF)),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      note['title'] as String,
-                                      style: const TextStyle(
-                                          color: Color(0xFF6B7280),
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      note['plain_text'] as String,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          color: Color(0xFF9CA3AF),
-                                          fontSize: 12),
-                                    ),
-                                    SizedBox(height: 6),
-                                    Text(
-                                      'Deleted $daysAgo days ago · $daysLeft days left',
+                                      'Deleted $daysAgo days ago',
                                       style: const TextStyle(
                                           color: Color(0xFFEF4444),
-                                          fontSize: 11),
+                                          fontSize: 12),
+                                    ),
+                                    Text(
+                                      '$daysLeft days left',
+                                      style: TextStyle(
+                                          color: daysLeft <= 5
+                                              ? const Color(0xFFEF4444)
+                                              : const Color(0xFF404040),
+                                          fontSize: 12),
                                     ),
                                   ],
                                 ),
-                              ),
+                              ],
                             ),
-                          );
-                        },
-                      ),
-            SizedBox(height: 24),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                '← Swipe to restore    Swipe to delete →',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Color(0xFFD1D5DB)),
-              ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+            const SizedBox(height: 16),
+            const Text(
+              '← Swipe to restore    Swipe to delete →',
+              style: TextStyle(
+                  color: Color(0xFFD1D5DB), fontSize: 12),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 32),
           ],
         ),
-      );
+      ));
   }
 }

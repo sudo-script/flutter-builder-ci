@@ -3,108 +3,159 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class TagManagerScreen extends StatefulWidget {
-  const TagManagerScreen({Key? key}) : super(key: key);
+  const TagManagerScreen({super.key});
 
   @override
   State<TagManagerScreen> createState() => _TagManagerScreenState();
 }
 
 class _TagManagerScreenState extends State<TagManagerScreen> {
-  final TextEditingController _tagNameController = TextEditingController();
+  final TextEditingController _newTagController = TextEditingController();
   final TextEditingController _renameController = TextEditingController();
-  String _newTagColor = '#ffffff';
-  String? _editingTagId;
-  List<Tag> _tags = [];
-  final String _userId = Supabase.instance.client.auth.currentUser!.id;
-  RealtimeChannel? _channel;
+
+  late final RealtimeChannel _channel;
+
+  String _selectedColor = '#6366f1';
+
+  final List<String> _palette = [
+    '#ffffff',
+    '#fef3c7',
+    '#dbeafe',
+    '#dcfce7',
+    '#fce7f3',
+    '#ede9fe',
+    '#fee2e2',
+    '#f3f4f6',
+  ];
+
+  List<Map<String, dynamic>> _tags = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _fetchTags();
-    _subscribe();
-  }
-
-  @override
-  void dispose() {
-    _tagNameController.dispose();
-    _renameController.dispose();
-    if (_channel != null) {
-      Supabase.instance.client.removeChannel(_channel!);
-    }
-    super.dispose();
+    _subscribeRealtime();
   }
 
   Future<void> _fetchTags() async {
     try {
+      final uid = Supabase.instance.client.auth.currentUser!.id;
       final data = await Supabase.instance.client
           .from('tags')
-          .select('id, name, color, note_tags(*)')
-          .eq('user_id', _userId)
-          .order('created_at', ascending: false)
-          .range(0, 100);
-      final List<Tag> tags = List<Tag>.from(data.map((e) {
-        final noteTags = e['note_tags'] as List<dynamic>?;
-        return Tag(
-          id: e['id'] as String,
-          name: e['name'] as String,
-          color: e['color'] as String,
-          count: noteTags?.length ?? 0,
-        );
-      }));
+          .select('id, name, color, note_tags(id)')
+          .eq('user_id', uid)
+          .order('created_at', ascending: false);
+      if (!mounted) return;
       setState(() {
-        _tags = tags;
+        _tags = data
+            .map((e) => {
+                  'id': e['id'],
+                  'name': e['name'],
+                  'color': e['color'],
+                  'note_count': e['note_tags']?.length ?? 0,
+                })
+            .toList();
+        _isLoading = false;
       });
     } catch (e) {
-      // Handle error
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
-  void _subscribe() {
-    _channel = Supabase.instance.client
-        .channel('public:tags')
-        .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'tags',
-            callback: (payload) {
-          _fetchTags();
-        })
-        .subscribe();
+  void _subscribeRealtime() {
+    _channel = Supabase.instance.client.channel('public:tags').onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'tags',
+        callback: (payload) {
+      _fetchTags();
+    }).subscribe();
   }
 
   Future<void> _addTag() async {
-    final name = _tagNameController.text.trim();
+    final name = _newTagController.text.trim();
     if (name.isEmpty) return;
+    final uid = Supabase.instance.client.auth.currentUser!.id;
     try {
-      await Supabase.instance.client
-          .from('tags')
-          .insert({
-        'user_id': _userId,
+      await Supabase.instance.client.from('tags').insert({
         'name': name,
-        'color': _newTagColor,
+        'color': _selectedColor,
+        'user_id': uid,
       });
-      _tagNameController.clear();
-      _newTagColor = '#ffffff';
+      _newTagController.clear();
       _fetchTags();
     } catch (e) {
-      // Handle error
+      // ignore
     }
   }
 
-  Future<void> _renameTag(String id, String newName) async {
+  Future<void> _deleteTag(String id) async {
     try {
       await Supabase.instance.client
+          .from('note_tags')
+          .delete()
+          .eq('tag_id', id);
+      await Supabase.instance.client
           .from('tags')
-          .update({'name': newName})
+          .delete()
           .eq('id', id);
       _fetchTags();
     } catch (e) {
-      // Handle error
+      // ignore
     }
   }
 
-  Future<void> _updateTagColor(String id, String color) async {
+  Future<void> _archiveTag(String id) async {
+    try {
+      await Supabase.instance.client
+          .from('tags')
+          .update({'deleted_at': DateTime.now().toIso8601String()})
+          .eq('id', id);
+      _fetchTags();
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  Future<void> _renameTag(Map<String, dynamic> tag) async {
+    _renameController.text = tag['name'];
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rename Tag'),
+        content: TextField(
+          controller: _renameController,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Tag name'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Save')),
+        ],
+      ),
+    );
+    if (result == true) {
+      try {
+        await Supabase.instance.client
+            .from('tags')
+            .update({'name': _renameController.text})
+            .eq('id', tag['id']);
+        _fetchTags();
+      } catch (e) {
+        // ignore
+      }
+    }
+  }
+
+  Future<void> _changeTagColor(String id, String color) async {
     try {
       await Supabase.instance.client
           .from('tags')
@@ -112,266 +163,230 @@ class _TagManagerScreenState extends State<TagManagerScreen> {
           .eq('id', id);
       _fetchTags();
     } catch (e) {
-      // Handle error
+      // ignore
     }
   }
 
-  Future<void> _deleteTag(String id, int count) async {
-    bool confirm = true;
-    if (count > 0) {
-      confirm = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Delete tag with notes?'),
-              content:
-                  const Text('This tag is associated with notes. Are you sure?'),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text('Cancel')),
-                TextButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text('Delete')),
-              ],
-            )) ??
-        false;
-    }
-    if (!confirm) return;
-    try {
-      await Supabase.instance.client
-          .from('tags')
-          .delete()
-          .eq('id', id);
-      _fetchTags();
-    } catch (e) {
-      // Handle error
-    }
-  }
-
-  Future<void> _showColorPicker(
-      {required BuildContext context,
-      String? currentColor,
-      required Function(String) onColorSelected}) async {
-    final palette = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7',
-      '#fce7f3', '#ede9fe', '#fee2e2', '#f3f4f6'];
-    await showModalBottomSheet(
+  void _openColorPicker() {
+    showModalBottomSheet(
         context: context,
-        builder: (_) {
-          return SizedBox(
-            height: 120,
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4, mainAxisSpacing: 8, crossAxisSpacing: 8),
-              itemCount: palette.length,
-              itemBuilder: (_, i) {
-                final colorHex = palette[i];
-                final color =
-                    Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
+        builder: (ctx) => Wrap(
+              spacing: 8,
+              children: _palette.map((c) {
+                final hex = c.replaceFirst('#', '0xFF');
                 return GestureDetector(
                   onTap: () {
-                    Navigator.pop(context);
-                    onColorSelected(colorHex);
+                    setState(() {
+                      _selectedColor = c;
+                    });
+                    Navigator.pop(ctx);
                   },
                   child: Container(
+                    width: 32,
+                    height: 32,
                     decoration: BoxDecoration(
-                      color: color,
+                      color: Color(int.parse(hex)),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        width: currentColor == colorHex ? 3 : 1,
-                        color: Colors.black,
+                        width: (_selectedColor == c ? 3 : 1),
+                        color: (_selectedColor == c
+                            ? Colors.black87
+                            : Colors.grey.shade300),
                       ),
                     ),
                   ),
                 );
-              },
-            ),
-          );
-        });
+              }).toList(),
+            ));
   }
 
-  Widget _buildAddTagRow() {
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: () => _showColorPicker(
-              context: context,
-              currentColor: _newTagColor,
-              onColorSelected: (c) => setState(() => _newTagColor = c)),
-          child: CircleAvatar(
-            radius: 14,
-            backgroundColor: Color(
-                int.parse(_newTagColor.replaceFirst('#', '0xFF'))),
-          ),
-        ),
-        SizedBox(width: 8),
-        Expanded(
-          child: TextField(
-            controller: _tagNameController,
-            decoration: const InputDecoration(
-              hintText: 'New tag name…',
-              hintStyle: TextStyle(color: Colors.grey),
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          ),
-        ),
-        SizedBox(width: 8),
-        ElevatedButton(
-            onPressed: _addTag, child: const Text('+')),
-      ],
-  }
-
-  Widget _buildTagItem(Tag tag) {
-    final isEditing = _editingTagId == tag.id;
-    return Dismissible(
-      key: ValueKey(tag.id),
-      background: Container(
-        color: Colors.blue,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        alignment: Alignment.centerLeft,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.archive, color: Colors.white),
-            SizedBox(height: 4),
-            Text('Archive', style: TextStyle(color: Colors.white, fontSize: 11)),
-          ],
-        ),
-      ),
-      secondaryBackground: Container(
-        color: Colors.red,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        alignment: Alignment.centerRight,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.delete, color: Colors.white),
-            SizedBox(height: 4),
-            Text('Delete', style: TextStyle(color: Colors.white, fontSize: 11)),
-          ],
-        ),
-      ),
-      confirmDismiss: (direction) async =>
-          direction == DismissDirection.endToStart
-              ? await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Delete tag?'),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Cancel')),
-                      TextButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('Delete')),
-                    ],
-                  ),
-                ) ??
-                false
-              : true,
-      onDismissed: (direction) {
-        if (direction == DismissDirection.endToStart) {
-          _deleteTag(tag.id, tag.count);
-        } else {
-          // Archive logic if needed
-        }
-      },
-      child: ListTile(
-        leading: GestureDetector(
-          onTap: () => _showColorPicker(
-              context: context,
-              currentColor: tag.color,
-              onColorSelected: (c) => _updateTagColor(tag.id, c)),
-          child: CircleAvatar(
-              backgroundColor:
-                  Color(int.parse(tag.color.replaceFirst('#', '0xFF')))),
-        ),
-        title: isEditing
-            ? TextField(
-                controller: _renameController,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  hintText: 'Rename…',
-                ),
-                onSubmitted: (val) {
-                  if (val.trim().isNotEmpty) {
-                    _renameTag(tag.id, val.trim());
-                  }
-                  setState(() => _editingTagId = null);
-                },
-              )
-            : GestureDetector(
-                onDoubleTap: () {
-                  setState(() {
-                    _editingTagId = tag.id;
-                    _renameController.text = tag.name;
-                  });
-                },
-                child: Text(tag.name),
-              ),
-        trailing: Text('${tag.count} notes',
-            style: const TextStyle(color: Colors.grey)),
-      );
+  @override
+  void dispose() {
+    Supabase.instance.client.removeChannel(_channel);
+    _newTagController.dispose();
+    _renameController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('← Tags'),
-        backgroundColor: Colors.white,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/notes_list'),
         ),
+        title: const Text('Tags',
+            style: TextStyle(fontSize: 20, color: Color(0xFF111827))),
         actions: [
           TextButton(
-              onPressed: () => context.go('/notes_list'),
-              child: const Text('Done'))
+            onPressed: () => context.go('/notes_list'),
+            child: const Text('Done',
+                style: TextStyle(fontSize: 15, color: Color(0xFF6366F1))),
+          )
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildAddTagRow(),
-            SizedBox(height: 24),
-            const Text('YOUR TAGS',
-                style: TextStyle(
-                  color: Color(0xFF6B7280),
-                  fontSize: 10,
-                )),
-            SizedBox(height: 12),
-            if (_tags.isEmpty)
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Center(child: Text('No tags found.')),
-              )
-            else
-              ListView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                shrinkWrap: true,
-                itemCount: _tags.length,
-                itemBuilder: (_, i) => _buildTagItem(_tags[i]),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
+              Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: _openColorPicker,
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Color(int.parse(
+                              _selectedColor.replaceFirst('#', '0xFF'))),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _newTagController,
+                        decoration: const InputDecoration(
+                          hintText: 'New tag name…',
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add, color: Colors.white),
+                      onPressed: _addTag,
+                      color: const Color(0xFF6366F1),
+                    ),
+                  ],
+                ),
               ),
-            SizedBox(height: 100),
-          ],
+              const SizedBox(height: 16),
+              const Divider(thickness: 1, color: Color(0xFFE5E7EB)),
+              const SizedBox(height: 8),
+              const Text('YOUR TAGS',
+                  style: TextStyle(
+                      color: Color(0xFF6B7280),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w400)),
+              const SizedBox(height: 16),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _tags.length,
+                      itemBuilder: (ctx, i) {
+                        final tag = _tags[i];
+                        return Dismissible(
+                          key: Key(tag['id'].toString()),
+                          direction: DismissDirection.horizontal,
+                          background: Container(
+                            color: Colors.blue,
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.only(left: 20),
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.archive, color: Colors.white),
+                                Text('Archive',
+                                    style: TextStyle(
+                                        color: Colors.white, fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                          secondaryBackground: Container(
+                            color: Colors.red,
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.only(right: 20),
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.delete, color: Colors.white),
+                                Text('Delete',
+                                    style: TextStyle(
+                                        color: Colors.white, fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                          confirmDismiss: (direction) async {
+                            if (direction ==
+                                DismissDirection.endToStart) {
+                              return await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                        title: const Text('Delete tag?'),
+                                        actions: [
+                                          TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx, false),
+                                              child:
+                                                  const Text('Cancel')),
+                                          TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(ctx, true),
+                                              child:
+                                                  const Text('Delete')),
+                                        ],
+                                      ));
+                            }
+                            return true;
+                          },
+                          onDismissed: (direction) {
+                            if (direction ==
+                                DismissDirection.endToStart) {
+                              _deleteTag(tag['id'].toString());
+                            } else {
+                              _archiveTag(tag['id'].toString());
+                            }
+                          },
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Color(int.parse(
+                                  tag['color'].replaceFirst('#', '0xFF'))),
+                            ),
+                            title: GestureDetector(
+                              onDoubleTap: () => _renameTag(tag),
+                              child: Text(tag['name'],
+                                  style:
+                                      const TextStyle(fontSize: 15, color: Color(0xFF111827))),
+                            ),
+                            subtitle: Text('${tag['note_count']} notes',
+                                style: const TextStyle(
+                                    fontSize: 12, color: Color(0xFF9CA3AF))),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.circle, size: 12),
+                                  color: Color(int.parse(
+                                      tag['color'].replaceFirst('#', '0xFF'))),
+                                  onPressed: () =>
+                                      _changeTagColor(tag['id'].toString(), tag['color']),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.close,
+                                    color: Color(0xFFD1D5DB), size: 16),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
-      );
+      ));
   }
-}
-
-class Tag {
-  final String id;
-  final String name;
-  final String color;
-  final int count;
-
-  Tag(
-      {required this.id,
-      required this.name,
-      required this.color,
-      required this.count});
 }
