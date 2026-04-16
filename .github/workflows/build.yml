@@ -30,9 +30,12 @@ jobs:
 
       - run: flutter pub get
 
-      - name: Analyze (warnings only)
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
-        continue-on-error: true
+      # ── PREFLIGHT ANALYZE ────────────────────────────────────────
+      # Fails the build in ~30s instead of ~40min when the generated
+      # Dart is bad. Paired with backend/dartRepair.js — repair runs
+      # before code is pushed; analyze is the final check.
+      - name: Analyze (FATAL on any issue)
+        run: flutter analyze --fatal-infos --fatal-warnings
 
       - name: Build release APK (arm64 only — ~8-15 MB)
         run: flutter build apk --release --target-platform android-arm64 --split-per-abi
@@ -46,3 +49,13 @@ jobs:
           path: build/app/outputs/flutter-apk/
           retention-days: 7
           if-no-files-found: error
+
+      # On any failure (analyze, build, whatever) upload the generated
+      # lib/ so you can download and inspect what the LLM actually produced.
+      - name: Upload generated Dart on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-lib-${{ github.event.inputs.build_id }}
+          path: lib/
+          retention-days: 3
