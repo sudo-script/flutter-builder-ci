@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
+
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
 }
@@ -27,9 +28,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 60,
             width: 200,
             height: 28,
-            child: const Text(
+            child: Text(
               'Good morning 👋',
-              style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+              style: TextStyle(fontSize: 14, color: const Color(0xFF94A3B8)),
             ),
           ),
           Positioned(
@@ -40,15 +41,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: GestureDetector(
               onTap: () => context.go('/profile'),
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF1E293B),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E293B),
                   shape: BoxShape.circle,
                 ),
-                child: Center(
-                  child: Text(
-                    '👤',
-                    style: TextStyle(fontSize: 18, color: Color(0xFF94A3B8)),
-                  ),
+                alignment: Alignment.center,
+                child: Text(
+                  '👤',
+                  style: TextStyle(fontSize: 18, color: const Color(0xFF94A3B8)),
                 ),
               ),
             ),
@@ -58,9 +58,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 84,
             width: 260,
             height: 36,
-            child: const Text(
+            child: Text(
               "Today's Plan",
-              style: TextStyle(fontSize: 26, color: Color(0xFFF8FAFC)),
+              style: TextStyle(fontSize: 26, color: const Color(0xFFF8FAFC)),
             ),
           ),
           Positioned(
@@ -69,9 +69,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             width: 350,
             height: 88,
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E3A5F),
-                borderRadius: BorderRadius.all(Radius.circular(16)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E3A5F),
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
           ),
@@ -80,9 +80,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 152,
             width: 200,
             height: 20,
-            child: const Text(
+            child: Text(
               '📅  April 21, 2026',
-              style: TextStyle(fontSize: 13, color: Color(0xFF93C5FD)),
+              style: TextStyle(fontSize: 13, color: const Color(0xFF93C5FD)),
             ),
           ),
           Positioned(
@@ -91,9 +91,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             width: 72,
             height: 48,
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF3B82F6),
-                borderRadius: BorderRadius.all(Radius.circular(12)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF3B82F6),
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
           ),
@@ -102,9 +102,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 164,
             width: 72,
             height: 30,
-            child: const Text(
+            child: Text(
               '5/8',
-              style: TextStyle(fontSize: 22, color: Colors.white),
+              style: TextStyle(fontSize: 22, color: const Color(0xFFFFFFFF)),
             ),
           ),
           Positioned(
@@ -112,9 +112,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 178,
             width: 180,
             height: 32,
-            child: const Text(
+            child: Text(
               '3 tasks remaining',
-              style: TextStyle(fontSize: 20, color: Color(0xFFDbeafe)),
+              style: TextStyle(fontSize: 20, color: const Color(0xFFDBEAFE)),
             ),
           ),
           Positioned(
@@ -122,9 +122,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 190,
             width: 72,
             height: 14,
-            child: const Text(
+            child: Text(
               'done',
-              style: TextStyle(fontSize: 10, color: Color(0xFF93C5FD)),
+              style: TextStyle(fontSize: 10, color: const Color(0xFF93C5FD)),
             ),
           ),
           Positioned(
@@ -132,9 +132,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 248,
             width: 200,
             height: 20,
-            child: const Text(
+            child: Text(
               'PENDING',
-              style: TextStyle(fontSize: 11, color: Color(0xFFF59E0B)),
+              style: TextStyle(fontSize: 11, color: const Color(0xFFF59E0B)),
             ),
           ),
           Positioned(
@@ -143,9 +143,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             width: 350,
             height: 68,
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E293B),
-                borderRadius: BorderRadius.all(Radius.circular(14)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
           ),
@@ -154,19 +154,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 290,
             width: 260,
             height: 20,
-            child: const Text(
+            child: Text(
               'Design landing page mockups',
-              style: TextStyle(fontSize: 15, color: Color(0xFFE2E8F0)),
+              style: TextStyle(fontSize: 15, color: const Color(0xFFE2E8F0)),
             ),
+          ),
+          Positioned(
+            left: 36,
+            top: 296,
+            width: 28,
+            height: 28,
+            child: Container(),
           ),
           Positioned(
             left: 76,
             top: 314,
             width: 200,
             height: 16,
-            child: const Text(
+            child: Text(
               'Due today · Work',
-              style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 11, color: const Color(0xFF64748B)),
             ),
           ),
           Positioned(
@@ -175,9 +182,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             width: 350,
             height: 68,
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E293B),
-                borderRadius: BorderRadius.all(Radius.circular(14)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
           ),
@@ -186,19 +193,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 370,
             width: 260,
             height: 20,
-            child: const Text(
+            child: Text(
               'Buy groceries',
-              style: TextStyle(fontSize: 15, color: Color(0xFFE2E8F0)),
+              style: TextStyle(fontSize: 15, color: const Color(0xFFE2E8F0)),
             ),
+          ),
+          Positioned(
+            left: 36,
+            top: 376,
+            width: 28,
+            height: 28,
+            child: Container(),
           ),
           Positioned(
             left: 76,
             top: 394,
             width: 200,
             height: 16,
-            child: const Text(
+            child: Text(
               'Due today · Personal',
-              style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 11, color: const Color(0xFF64748B)),
             ),
           ),
           Positioned(
@@ -207,9 +221,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             width: 350,
             height: 68,
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E293B),
-                borderRadius: BorderRadius.all(Radius.circular(14)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
           ),
@@ -218,19 +232,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 450,
             width: 260,
             height: 20,
-            child: const Text(
+            child: Text(
               'Prepare sprint review slides',
-              style: TextStyle(fontSize: 15, color: Color(0xFFE2E8F0)),
+              style: TextStyle(fontSize: 15, color: const Color(0xFFE2E8F0)),
             ),
+          ),
+          Positioned(
+            left: 36,
+            top: 456,
+            width: 28,
+            height: 28,
+            child: Container(),
           ),
           Positioned(
             left: 76,
             top: 474,
             width: 200,
             height: 16,
-            child: const Text(
+            child: Text(
               'Due tomorrow · Work',
-              style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 11, color: const Color(0xFF64748B)),
             ),
           ),
           Positioned(
@@ -238,9 +259,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 528,
             width: 200,
             height: 20,
-            child: const Text(
+            child: Text(
               'COMPLETED',
-              style: TextStyle(fontSize: 11, color: Color(0xFF22C55E)),
+              style: TextStyle(fontSize: 11, color: const Color(0xFF22C55E)),
             ),
           ),
           Positioned(
@@ -248,13 +269,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 556,
             width: 350,
             height: 60,
-            child: Opacity(
-              opacity: 0.6,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
-                  borderRadius: BorderRadius.all(Radius.circular(14)),
-                ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B).withOpacity(0.6),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
           ),
@@ -265,7 +283,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: 28,
             child: Container(
               decoration: BoxDecoration(
-                color: Color(0xFF22C55E).withOpacity(0.7),
+                color: const Color(0xFF22C55E).withOpacity(0.7),
                 shape: BoxShape.circle,
               ),
             ),
@@ -277,10 +295,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: 20,
             child: Text(
               'Reply to client emails',
-              style: TextStyle(
-                fontSize: 15,
-                color: Color(0xFF64748B).withOpacity(0.7),
-              ),
+              style: TextStyle(fontSize: 15, color: const Color(0xFF64748B).withOpacity(0.7)),
             ),
           ),
           Positioned(
@@ -290,10 +305,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: 18,
             child: Text(
               '✓',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.white.withOpacity(0.9),
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.9)),
             ),
           ),
           Positioned(
@@ -301,13 +313,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 628,
             width: 350,
             height: 60,
-            child: Opacity(
-              opacity: 0.6,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
-                  borderRadius: BorderRadius.all(Radius.circular(14)),
-                ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B).withOpacity(0.6),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
           ),
@@ -318,7 +327,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: 28,
             child: Container(
               decoration: BoxDecoration(
-                color: Color(0xFF22C55E).withOpacity(0.7),
+                color: const Color(0xFF22C55E).withOpacity(0.7),
                 shape: BoxShape.circle,
               ),
             ),
@@ -330,10 +339,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: 20,
             child: Text(
               'Morning standup meeting',
-              style: TextStyle(
-                fontSize: 15,
-                color: Color(0xFF64748B).withOpacity(0.7),
-              ),
+              style: TextStyle(fontSize: 15, color: const Color(0xFF64748B).withOpacity(0.7)),
             ),
           ),
           Positioned(
@@ -343,10 +349,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             height: 18,
             child: Text(
               '✓',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.white.withOpacity(0.9),
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.9)),
             ),
           ),
           Positioned(
@@ -357,15 +360,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: GestureDetector(
               onTap: () => context.go('/add_task'),
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF3B82F6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3B82F6),
                   shape: BoxShape.circle,
                 ),
-                child: Center(
-                  child: Text(
-                    '+',
-                    style: TextStyle(fontSize: 32, color: Colors.white),
-                  ),
+                alignment: Alignment.center,
+                child: Text(
+                  '+',
+                  style: TextStyle(fontSize: 32, color: const Color(0xFFFFFFFF)),
                 ),
               ),
             ),
@@ -382,9 +384,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 800,
             width: 60,
             height: 20,
-            child: const Text(
+            child: Text(
               '🏠',
-              style: TextStyle(fontSize: 20, color: Color(0xFF3B82F6)),
+              style: TextStyle(fontSize: 20, color: const Color(0xFF3B82F6)),
             ),
           ),
           Positioned(
@@ -392,9 +394,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 800,
             width: 60,
             height: 20,
-            child: const Text(
+            child: Text(
               '📅',
-              style: TextStyle(fontSize: 20, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 20, color: const Color(0xFF64748B)),
             ),
           ),
           Positioned(
@@ -402,9 +404,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 800,
             width: 60,
             height: 20,
-            child: const Text(
+            child: Text(
               '⚙️',
-              style: TextStyle(fontSize: 20, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 20, color: const Color(0xFF64748B)),
             ),
           ),
           Positioned(
@@ -412,9 +414,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 820,
             width: 60,
             height: 14,
-            child: const Text(
+            child: Text(
               'Today',
-              style: TextStyle(fontSize: 9, color: Color(0xFF3B82F6)),
+              style: TextStyle(fontSize: 9, color: const Color(0xFF3B82F6)),
             ),
           ),
           Positioned(
@@ -422,9 +424,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 820,
             width: 60,
             height: 14,
-            child: const Text(
+            child: Text(
               'Calendar',
-              style: TextStyle(fontSize: 9, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 9, color: const Color(0xFF64748B)),
             ),
           ),
           Positioned(
@@ -432,9 +434,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             top: 820,
             width: 60,
             height: 14,
-            child: const Text(
+            child: Text(
               'Settings',
-              style: TextStyle(fontSize: 9, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 9, color: const Color(0xFF64748B)),
             ),
           ),
         ],

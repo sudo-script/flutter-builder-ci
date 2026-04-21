@@ -5,7 +5,7 @@ class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
@@ -20,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _signIn() {
+    if (!mounted) return;
     context.go('/dashboard');
   }
 
@@ -30,63 +31,66 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background gradient rectangle
+          // Full screen dark background
           Positioned(
             left: 0,
             top: 0,
             width: 390,
             height: 844,
-            child: Container(color: const Color(0xFF0F172A)),
+            child: Container(
+              color: const Color(0xFF0F172A),
+            ),
           ),
-          // Top header rectangle
+          // Header rectangle
           Positioned(
             left: 0,
             top: 0,
             width: 390,
             height: 320,
-            child: Container(color: const Color(0xFF1E293B)),
+            child: Container(
+              color: const Color(0xFF1E293B),
+            ),
           ),
-          // Blue circle
+          // Circular icon
           Positioned(
-            left: 115,
-            top: 40,
+            left: 155,
+            top: 80,
             width: 80,
             height: 80,
             child: Container(
               decoration: const BoxDecoration(
-                shape: BoxShape.circle,
                 color: Color(0xFF3B82F6),
+                shape: BoxShape.circle,
               ),
             ),
           ),
-          // Check mark
+          // Check mark text
           Positioned(
             left: 155,
             top: 88,
             width: 80,
             height: 64,
-            child: const Text(
-              '✓',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 44,
-                fontWeight: FontWeight.bold,
+            child: Center(
+              child: Text(
+                '✓',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 44,
+                ),
               ),
             ),
           ),
-          // TaskFlow title
+          // App title
           Positioned(
             left: 95,
             top: 180,
             width: 200,
             height: 36,
-            child: const Text(
+            child: Text(
               'TaskFlow',
-              style: TextStyle(
+              style: const TextStyle(
                 color: Color(0xFFF8FAFC),
                 fontSize: 30,
-                fontWeight: FontWeight.bold,
               ),
             ),
           ),
@@ -96,9 +100,9 @@ class _LoginScreenState extends State<LoginScreen> {
             top: 220,
             width: 200,
             height: 20,
-            child: const Text(
+            child: Text(
               'Plan your day. Get it done.',
-              style: TextStyle(
+              style: const TextStyle(
                 color: Color(0xFF64748B),
                 fontSize: 13,
               ),
@@ -110,39 +114,39 @@ class _LoginScreenState extends State<LoginScreen> {
             top: 360,
             width: 200,
             height: 18,
-            child: const Text(
+            child: Text(
               'Email',
-              style: TextStyle(
+              style: const TextStyle(
                 color: Color(0xFF94A3B8),
                 fontSize: 12,
               ),
             ),
           ),
-          // Email input field
+          // Email input container
           Positioned(
             left: 32,
             top: 382,
             width: 326,
             height: 50,
-            child: TextField(
-              controller: _emailController,
-              style: const TextStyle(
-                color: Color(0xFF475569),
-                fontSize: 14,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E293B),
+                borderRadius: BorderRadius.all(Radius.circular(12)),
               ),
-              decoration: const InputDecoration(
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                hintText: 'you@email.com',
-                hintStyle: TextStyle(
-                  color: Color(0xFF475569),
+              child: TextField(
+                controller: _emailController,
+                style: const TextStyle(
+                  color: Colors.white,
                   fontSize: 14,
                 ),
-                filled: true,
-                fillColor: Color(0xFF1E293B),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                  borderSide: BorderSide.none,
+                decoration: InputDecoration(
+                  hintText: 'you@email.com',
+                  hintStyle: const TextStyle(
+                    color: Color(0xFF475569),
+                    fontSize: 14,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 ),
               ),
             ),
@@ -153,40 +157,40 @@ class _LoginScreenState extends State<LoginScreen> {
             top: 450,
             width: 200,
             height: 18,
-            child: const Text(
+            child: Text(
               'Password',
-              style: TextStyle(
+              style: const TextStyle(
                 color: Color(0xFF94A3B8),
                 fontSize: 12,
               ),
             ),
           ),
-          // Password input field
+          // Password input container
           Positioned(
             left: 32,
             top: 472,
             width: 326,
             height: 50,
-            child: TextField(
-              controller: _passwordController,
-              obscureText: true,
-              style: const TextStyle(
-                color: Color(0xFF475569),
-                fontSize: 14,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E293B),
+                borderRadius: BorderRadius.all(Radius.circular(12)),
               ),
-              decoration: const InputDecoration(
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                hintText: '••••••••',
-                hintStyle: TextStyle(
-                  color: Color(0xFF475569),
+              child: TextField(
+                controller: _passwordController,
+                obscureText: true,
+                style: const TextStyle(
+                  color: Colors.white,
                   fontSize: 14,
                 ),
-                filled: true,
-                fillColor: Color(0xFF1E293B),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                  borderSide: BorderSide.none,
+                decoration: InputDecoration(
+                  hintText: '••••••••',
+                  hintStyle: const TextStyle(
+                    color: Color(0xFF475569),
+                    fontSize: 14,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 ),
               ),
             ),
@@ -197,20 +201,21 @@ class _LoginScreenState extends State<LoginScreen> {
             top: 556,
             width: 326,
             height: 52,
-            child: ElevatedButton(
-              onPressed: _signIn,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3B82F6),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+            child: GestureDetector(
+              onTap: _signIn,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFF3B82F6),
+                  borderRadius: BorderRadius.all(Radius.circular(14)),
                 ),
-              ),
-              child: const Text(
-                'Sign In',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                child: Center(
+                  child: Text(
+                    'Sign In',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -221,42 +226,38 @@ class _LoginScreenState extends State<LoginScreen> {
             top: 640,
             width: 230,
             height: 1,
-            child: const Divider(
-              color: Color(0xFF334155),
-              thickness: 1,
+            child: Container(
+              color: const Color(0xFF334155),
             ),
           ),
-          // "or" text
+          // Or text
           Positioned(
             left: 155,
             top: 650,
             width: 80,
             height: 18,
-            child: const Text(
-              'or',
-              style: TextStyle(
-                color: Color(0xFF475569),
-                fontSize: 12,
+            child: Center(
+              child: Text(
+                'or',
+                style: const TextStyle(
+                  color: Color(0xFF475569),
+                  fontSize: 12,
+                ),
               ),
             ),
           ),
-          // Create Account button placeholder
+          // Create Account (non-interactive)
           Positioned(
             left: 32,
-            top: 684,
+            top: 698,
             width: 326,
-            height: 52,
-            child: TextButton(
-              onPressed: () {},
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.transparent,
-              ),
-              child: const Text(
+            height: 24,
+            child: Center(
+              child: Text(
                 'Create Account',
-                style: TextStyle(
+                style: const TextStyle(
                   color: Color(0xFF93C5FD),
                   fontSize: 16,
-                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
@@ -267,11 +268,13 @@ class _LoginScreenState extends State<LoginScreen> {
             top: 780,
             width: 250,
             height: 16,
-            child: const Text(
-              'By continuing, you agree to our Terms',
-              style: TextStyle(
-                color: Color(0xFF475569),
-                fontSize: 11,
+            child: Center(
+              child: Text(
+                'By continuing, you agree to our Terms',
+                style: const TextStyle(
+                  color: Color(0xFF475569),
+                  fontSize: 11,
+                ),
               ),
             ),
           ),
