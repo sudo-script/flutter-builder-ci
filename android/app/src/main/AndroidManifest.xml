@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.exa.sdg">
+    package="com.ex.gmh">
     <application
         android:label="My App"
         android:name="${applicationName}"

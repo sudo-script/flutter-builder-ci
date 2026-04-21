@@ -26,6 +26,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  Widget _buildTaskCard(String title, String subtitle, bool done, {VoidCallback? onTap}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: done ? const Color(0xFF1E293B).withValues(alpha: 0.6) : const Color(0xFF1E293B),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 28, height: 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: done ? const Color(0xFF22C55E).withValues(alpha: 0.7) : Colors.transparent,
+                  border: done ? null : Border.all(color: const Color(0xFFF59E0B), width: 2),
+                ),
+                child: done ? Center(child: Text('\u2713', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold))) : null,
+              ),
+              SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: TextStyle(fontSize: 15, color: done ? const Color(0xFF64748B).withValues(alpha: 0.7) : const Color(0xFFE2E8F0))),
+                    if (subtitle.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(subtitle, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(String icon, String label, bool active) {
+    final color = active ? const Color(0xFF3B82F6) : const Color(0xFF64748B);
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(icon, style: TextStyle(fontSize: 20, color: color)),
+        SizedBox(height: 2),
+        Text(label, style: TextStyle(fontSize: 9, color: color, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final total = _pending.length + _completed.length;
@@ -44,9 +95,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Good morning 👋', style: TextStyle(fontSize: 14, color: const Color(0xFF94A3B8))),
+                        const Text('Good morning \ud83d\udc4b', style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8))),
                         SizedBox(height: 4),
-                        Text("Today's Plan", style: TextStyle(fontSize: 26, color: const Color(0xFFF8FAFC), fontWeight: FontWeight.bold)),
+                        const Text("Today's Plan", style: TextStyle(fontSize: 26, color: Color(0xFFF8FAFC), fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -54,8 +105,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onTap: () => context.go('/profile'),
                     child: Container(
                       width: 40, height: 40,
-                      decoration: BoxDecoration(color: const Color(0xFF1E293B), shape: BoxShape.circle),
-                      child: Center(child: Text('👤', style: TextStyle(fontSize: 18))),
+                      decoration: BoxDecoration(color: Color(0xFF1E293B), shape: BoxShape.circle),
+                      child: Center(child: Text('\ud83d\udc64', style: TextStyle(fontSize: 18))),
                     ),
                   ),
                 ],
@@ -73,9 +124,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('📅  April 21, 2026', style: TextStyle(fontSize: 13, color: const Color(0xFF93C5FD), fontWeight: FontWeight.w600)),
+                          const Text('\ud83d\udcc5  April 21, 2026', style: TextStyle(fontSize: 13, color: Color(0xFF93C5FD), fontWeight: FontWeight.w600)),
                           SizedBox(height: 8),
-                          Text('${_pending.length} tasks remaining', style: TextStyle(fontSize: 20, color: const Color(0xFFDBEAFE), fontWeight: FontWeight.bold)),
+                          Text('${_pending.length} tasks remaining', style: const TextStyle(fontSize: 20, color: Color(0xFFDBEAFE), fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),
@@ -86,7 +137,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text('$done/$total', style: const TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.bold)),
-                          Text('done', style: TextStyle(fontSize: 10, color: const Color(0xFF93C5FD))),
+                          const Text('done', style: TextStyle(fontSize: 10, color: Color(0xFF93C5FD))),
                         ],
                       ),
                     ),
@@ -100,20 +151,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
                   if (_pending.isNotEmpty) ...[
-                    Text('PENDING', style: TextStyle(fontSize: 11, color: const Color(0xFFF59E0B), fontWeight: FontWeight.bold)),
+                    const Text('PENDING', style: TextStyle(fontSize: 11, color: Color(0xFFF59E0B), fontWeight: FontWeight.bold)),
                     SizedBox(height: 12),
-                    ..._pending.asMap().entries.map((e) => TaskCard(
-                      title: e.value['title'] as String,
-                      subtitle: '${e.value['due']} · ${e.value['cat']}',
-                      done: false,
+                    ..._pending.asMap().entries.map((e) => _buildTaskCard(
+                      e.value['title'] as String,
+                      '${e.value['due']} \u00b7 ${e.value['cat']}',
+                      false,
                       onTap: () => _toggleTask(e.key),
                     )),
                     SizedBox(height: 20),
                   ],
                   if (_completed.isNotEmpty) ...[
-                    Text('COMPLETED', style: TextStyle(fontSize: 11, color: const Color(0xFF22C55E), fontWeight: FontWeight.bold)),
+                    const Text('COMPLETED', style: TextStyle(fontSize: 11, color: Color(0xFF22C55E), fontWeight: FontWeight.bold)),
                     SizedBox(height: 12),
-                    ..._completed.map((t) => TaskCard(title: t['title'] as String, subtitle: '', done: true)),
+                    ..._completed.map((t) => _buildTaskCard(t['title'] as String, '', true)),
                   ],
                 ],
               ),
@@ -124,9 +175,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  NavItem(icon: '🏠', label: 'Today', active: true),
-                  NavItem(icon: '📅', label: 'Calendar', active: false),
-                  NavItem(icon: '⚙️', label: 'Settings', active: false),
+                  _buildNavItem('\ud83c\udfe0', 'Today', true),
+                  _buildNavItem('\ud83d\udcc5', 'Calendar', false),
+                  _buildNavItem('\u2699\ufe0f', 'Settings', false),
                 ],
               ),
             ),

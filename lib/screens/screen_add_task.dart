@@ -41,6 +41,35 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     context.go('/dashboard');
   }
 
+  Widget _buildChip(String label, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF1E3A5F) : const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(label, style: TextStyle(color: selected ? const Color(0xFF93C5FD) : const Color(0xFF64748B), fontSize: 13, fontWeight: selected ? FontWeight.w600 : FontWeight.normal)),
+      ),
+    );
+  }
+
+  Widget _buildPriority(String label, Color color, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 100, height: 38,
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.2) : const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(10),
+          border: selected ? Border.all(color: color, width: 1.5) : null,
+        ),
+        child: Center(child: Text(label, style: TextStyle(color: selected ? color : const Color(0xFF64748B), fontSize: 13, fontWeight: selected ? FontWeight.w600 : FontWeight.normal))),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -54,7 +83,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               SizedBox(height: 16),
               Row(
                 children: [
-                  GestureDetector(onTap: () => context.go('/dashboard'), child: const Text('←', style: TextStyle(color: Color(0xFFF8FAFC), fontSize: 22))),
+                  GestureDetector(onTap: () => context.go('/dashboard'), child: const Text('\u2190', style: TextStyle(color: Color(0xFFF8FAFC), fontSize: 22))),
                   SizedBox(width: 60),
                   const Text('New Task', style: TextStyle(color: Color(0xFFF8FAFC), fontSize: 20, fontWeight: FontWeight.bold)),
                 ],
@@ -94,7 +123,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   alignment: Alignment.centerLeft,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    _dueDate == null ? '📅  Pick a date' : '${_dueDate!.month}/${_dueDate!.day}/${_dueDate!.year}',
+                    _dueDate == null ? '\ud83d\udcc5  Pick a date' : '${_dueDate!.month}/${_dueDate!.day}/${_dueDate!.year}',
                     style: const TextStyle(color: Color(0xFF475569), fontSize: 14),
                   ),
                 ),
@@ -104,11 +133,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               SizedBox(height: 6),
               Row(
                 children: [
-                  ChipBtn(label: '💼 Work', selected: _category == 'Work', onTap: () => setState(() => _category = 'Work')),
+                  _buildChip('\ud83d\udcbc Work', _category == 'Work', () => setState(() => _category = 'Work')),
                   SizedBox(width: 10),
-                  ChipBtn(label: '🏠 Personal', selected: _category == 'Personal', onTap: () => setState(() => _category = 'Personal')),
+                  _buildChip('\ud83c\udfe0 Personal', _category == 'Personal', () => setState(() => _category = 'Personal')),
                   SizedBox(width: 10),
-                  ChipBtn(label: '📚 Study', selected: _category == 'Study', onTap: () => setState(() => _category = 'Study')),
+                  _buildChip('\ud83d\udcda Study', _category == 'Study', () => setState(() => _category = 'Study')),
                 ],
               ),
               SizedBox(height: 20),
@@ -116,11 +145,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               SizedBox(height: 6),
               Row(
                 children: [
-                  PriorityBtn(label: 'Low', color: const Color(0xFF4ADE80), selected: _priority == 'Low', onTap: () => setState(() => _priority = 'Low')),
+                  _buildPriority('Low', const Color(0xFF4ADE80), _priority == 'Low', () => setState(() => _priority = 'Low')),
                   SizedBox(width: 10),
-                  PriorityBtn(label: 'Medium', color: const Color(0xFFF59E0B), selected: _priority == 'Medium', onTap: () => setState(() => _priority = 'Medium')),
+                  _buildPriority('Medium', const Color(0xFFF59E0B), _priority == 'Medium', () => setState(() => _priority = 'Medium')),
                   SizedBox(width: 10),
-                  PriorityBtn(label: 'High', color: const Color(0xFFEF4444), selected: _priority == 'High', onTap: () => setState(() => _priority = 'High')),
+                  _buildPriority('High', const Color(0xFFEF4444), _priority == 'High', () => setState(() => _priority = 'High')),
                 ],
               ),
               SizedBox(height: 40),
