@@ -44,7 +44,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: Color(0xFF1E293B),
                   shape: BoxShape.circle,
                 ),
-                child: const Center(
+                child: Center(
                   child: Text(
                     '👤',
                     style: TextStyle(fontSize: 18, color: Color(0xFF94A3B8)),
@@ -361,7 +361,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: Color(0xFF3B82F6),
                   shape: BoxShape.circle,
                 ),
-                child: const Center(
+                child: Center(
                   child: Text(
                     '+',
                     style: TextStyle(fontSize: 32, color: Colors.white),

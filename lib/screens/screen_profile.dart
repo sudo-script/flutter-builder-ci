@@ -36,7 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-          const Positioned(
+          Positioned(
             left: 100,
             top: 62,
             child: Text(
@@ -47,7 +47,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-          const Positioned(
+          Positioned(
             left: 147,
             top: 120,
             child: Container(
@@ -68,7 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-          const Positioned(
+          Positioned(
             left: 95,
             top: 232,
             child: Text(
@@ -79,7 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-          const Positioned(
+          Positioned(
             left: 95,
             top: 260,
             child: Text(
@@ -90,7 +90,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-          const Positioned(
+          Positioned(
             left: 95,
             top: 284,
             child: Text(
@@ -101,7 +101,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-          const Positioned(
+          Positioned(
             left: 24,
             top: 330,
             child: Text(
@@ -122,7 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: Color(0xFF1E293B),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Column(
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
@@ -154,7 +154,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: Color(0xFF1E293B),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Column(
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
@@ -186,7 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: Color(0xFF1E293B),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Column(
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
@@ -208,7 +208,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-          const Positioned(
+          Positioned(
             left: 24,
             top: 464,
             child: Text(
@@ -229,7 +229,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: Color(0xFF1E293B),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
+              child: Row(
                 children: [
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20),
@@ -266,7 +266,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: Color(0xFF1E293B),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Padding(
+              child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
                   '🌙  Dark Mode',
@@ -288,7 +288,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: Color(0xFF1E293B),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
+              child: Row(
                 children: [
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20),
@@ -327,7 +327,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: Color(0xFF1C1917),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Center(
+                child: Center(
                   child: Text(
                     'Sign Out',
                     style: TextStyle(
