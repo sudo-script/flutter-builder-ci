@@ -104,11 +104,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               SizedBox(height: 6),
               Row(
                 children: [
-                  _Chip(label: '💼 Work', selected: _category == 'Work', onTap: () => setState(() => _category = 'Work')),
+                  ChipBtn(label: '💼 Work', selected: _category == 'Work', onTap: () => setState(() => _category = 'Work')),
                   SizedBox(width: 10),
-                  _Chip(label: '🏠 Personal', selected: _category == 'Personal', onTap: () => setState(() => _category = 'Personal')),
+                  ChipBtn(label: '🏠 Personal', selected: _category == 'Personal', onTap: () => setState(() => _category = 'Personal')),
                   SizedBox(width: 10),
-                  _Chip(label: '📚 Study', selected: _category == 'Study', onTap: () => setState(() => _category = 'Study')),
+                  ChipBtn(label: '📚 Study', selected: _category == 'Study', onTap: () => setState(() => _category = 'Study')),
                 ],
               ),
               SizedBox(height: 20),
@@ -116,11 +116,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               SizedBox(height: 6),
               Row(
                 children: [
-                  _PriorityBtn(label: 'Low', color: const Color(0xFF4ADE80), selected: _priority == 'Low', onTap: () => setState(() => _priority = 'Low')),
+                  PriorityBtn(label: 'Low', color: const Color(0xFF4ADE80), selected: _priority == 'Low', onTap: () => setState(() => _priority = 'Low')),
                   SizedBox(width: 10),
-                  _PriorityBtn(label: 'Medium', color: const Color(0xFFF59E0B), selected: _priority == 'Medium', onTap: () => setState(() => _priority = 'Medium')),
+                  PriorityBtn(label: 'Medium', color: const Color(0xFFF59E0B), selected: _priority == 'Medium', onTap: () => setState(() => _priority = 'Medium')),
                   SizedBox(width: 10),
-                  _PriorityBtn(label: 'High', color: const Color(0xFFEF4444), selected: _priority == 'High', onTap: () => setState(() => _priority = 'High')),
+                  PriorityBtn(label: 'High', color: const Color(0xFFEF4444), selected: _priority == 'High', onTap: () => setState(() => _priority = 'High')),
                 ],
               ),
               SizedBox(height: 40),

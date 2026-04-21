@@ -102,7 +102,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   if (_pending.isNotEmpty) ...[
                     Text('PENDING', style: TextStyle(fontSize: 11, color: const Color(0xFFF59E0B), fontWeight: FontWeight.bold)),
                     SizedBox(height: 12),
-                    ..._pending.asMap().entries.map((e) => _TaskCard(
+                    ..._pending.asMap().entries.map((e) => TaskCard(
                       title: e.value['title'] as String,
                       subtitle: '${e.value['due']} · ${e.value['cat']}',
                       done: false,
@@ -113,7 +113,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   if (_completed.isNotEmpty) ...[
                     Text('COMPLETED', style: TextStyle(fontSize: 11, color: const Color(0xFF22C55E), fontWeight: FontWeight.bold)),
                     SizedBox(height: 12),
-                    ..._completed.map((t) => _TaskCard(title: t['title'] as String, subtitle: '', done: true)),
+                    ..._completed.map((t) => TaskCard(title: t['title'] as String, subtitle: '', done: true)),
                   ],
                 ],
               ),
@@ -124,9 +124,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _NavItem(icon: '🏠', label: 'Today', active: true),
-                  _NavItem(icon: '📅', label: 'Calendar', active: false),
-                  _NavItem(icon: '⚙️', label: 'Settings', active: false),
+                  NavItem(icon: '🏠', label: 'Today', active: true),
+                  NavItem(icon: '📅', label: 'Calendar', active: false),
+                  NavItem(icon: '⚙️', label: 'Settings', active: false),
                 ],
               ),
             ),
