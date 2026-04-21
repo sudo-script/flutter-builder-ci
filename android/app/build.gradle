@@ -11,7 +11,7 @@ if (localPropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.exam.gkg"
+    namespace "com.exa.sdfg"
     compileSdk 36
     ndkVersion "28.2.13676358"
 
@@ -24,7 +24,7 @@ android {
     sourceSets { main.java.srcDirs += 'src/main/kotlin' }
 
     defaultConfig {
-        applicationId "com.exam.gkg"
+        applicationId "com.exa.sdfg"
         minSdkVersion 23
         targetSdkVersion 36
         versionCode 10000

@@ -1,48 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'screens/screen_auth.dart';
-import 'screens/screen_notes_list.dart';
-import 'screens/screen_note_editor.dart';
-import 'screens/screen_tag_manager.dart';
-import 'screens/screen_trash.dart';
-import 'screens/screen_settings.dart';
+import 'screens/screen_login.dart';
+import 'screens/screen_dashboard.dart';
+import 'screens/screen_add_task.dart';
+import 'screens/screen_profile.dart';
 
 abstract class AppRouter {
   AppRouter._();
 
   static final GoRouter router = GoRouter(
-    initialLocation: '/auth',
+    initialLocation: '/login',
     debugLogDiagnostics: false,
     routes: [
     GoRoute(
-      path: '/auth',
-      name: 'AuthScreen',
-      builder: (context, state) => AuthScreen(),
+      path: '/login',
+      name: 'LoginScreen',
+      builder: (context, state) => LoginScreen(),
     ),
     GoRoute(
-      path: '/notes_list',
-      name: 'NotesListScreen',
-      builder: (context, state) => NotesListScreen(),
+      path: '/dashboard',
+      name: 'DashboardScreen',
+      builder: (context, state) => DashboardScreen(),
     ),
     GoRoute(
-      path: '/note_editor',
-      name: 'NoteEditorScreen',
-      builder: (context, state) => NoteEditorScreen(noteId: (state.extra as Map<String,dynamic>?)?['noteId'] as String?),
+      path: '/add_task',
+      name: 'AddTaskScreen',
+      builder: (context, state) => AddTaskScreen(),
     ),
     GoRoute(
-      path: '/tag_manager',
-      name: 'TagManagerScreen',
-      builder: (context, state) => TagManagerScreen(),
-    ),
-    GoRoute(
-      path: '/trash',
-      name: 'TrashScreen',
-      builder: (context, state) => TrashScreen(),
-    ),
-    GoRoute(
-      path: '/settings',
-      name: 'SettingsScreen',
-      builder: (context, state) => SettingsScreen(),
+      path: '/profile',
+      name: 'ProfileScreen',
+      builder: (context, state) => ProfileScreen(),
     ),
     ],
     errorBuilder: (context, state) => const _ErrorScreen(),
