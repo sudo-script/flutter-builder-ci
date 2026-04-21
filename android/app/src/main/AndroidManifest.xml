@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.exam.sdfg">
+    package="com.exdf.sdg">
     <application
         android:label="My App"
         android:name="${applicationName}"
