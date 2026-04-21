@@ -1,21 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
-  @override
-  _ProfileScreenState createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  void _goToDashboard() {
-    context.go('/dashboard');
-  }
-
-  void _goToLogin() {
-    context.go('/login');
-  }
-
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -28,16 +15,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             top: 0,
             width: 390,
             height: 844,
-            child: Container(color: const Color(0xFF0F172A)),
+            child: Container(
+              color: const Color(0xFF0F172A),
+            ),
           ),
           Positioned(
             left: 16,
             top: 60,
             child: GestureDetector(
-              onTap: _goToDashboard,
-              child: const Text(
+              onTap: () {
+                context.go('/dashboard');
+              },
+              child: Text(
                 '←',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 22,
                   color: Color(0xFFF8FAFC),
                 ),
@@ -47,32 +38,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Positioned(
             left: 100,
             top: 62,
-            child: const Text(
+            child: Text(
               'Profile',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 20,
                 color: Color(0xFFF8FAFC),
               ),
             ),
           ),
           Positioned(
-            left: 147 - 48,
-            top: 120 - 48,
+            left: 99,
+            top: 120,
             width: 96,
             height: 96,
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Color(0xFF1E293B),
               ),
             ),
           ),
           Positioned(
-            left: 147 - 48,
-            top: 140 - 28,
-            child: const Text(
+            left: 147,
+            top: 140,
+            child: Text(
               '👤',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 40,
                 color: Color(0xFF94A3B8),
               ),
@@ -81,9 +72,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Positioned(
             left: 95,
             top: 232,
-            child: const Text(
+            child: Text(
               'John Doe',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 20,
                 color: Color(0xFFF8FAFC),
               ),
@@ -92,9 +83,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Positioned(
             left: 95,
             top: 260,
-            child: const Text(
+            child: Text(
               'john@email.com',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 13,
                 color: Color(0xFF64748B),
               ),
@@ -103,9 +94,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Positioned(
             left: 95,
             top: 284,
-            child: const Text(
+            child: Text(
               'Member since Jan 2026',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 11,
                 color: Color(0xFF475569),
               ),
@@ -114,9 +105,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Positioned(
             left: 24,
             top: 330,
-            child: const Text(
+            child: Text(
               'STATS',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 10,
                 color: Color(0xFF64748B),
               ),
@@ -128,9 +119,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: 108,
             height: 80,
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E293B),
-                borderRadius: BorderRadius.all(Radius.circular(14)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
           ),
@@ -140,9 +131,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: 108,
             height: 80,
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E293B),
-                borderRadius: BorderRadius.all(Radius.circular(14)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
           ),
@@ -152,18 +143,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: 108,
             height: 80,
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E293B),
-                borderRadius: BorderRadius.all(Radius.circular(14)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
           ),
           Positioned(
             left: 24,
             top: 370,
-            child: const Text(
+            child: Text(
               '142',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 24,
                 color: Color(0xFF3B82F6),
               ),
@@ -172,20 +163,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Positioned(
             left: 141,
             top: 370,
-            child: const Text(
+            child: Text(
               '8',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 24,
-                color: Color(0xFF59E0F6),
+                color: Color(0xFFF59E0B),
               ),
             ),
           ),
           Positioned(
             left: 258,
             top: 370,
-            child: const Text(
+            child: Text(
               '12',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 24,
                 color: Color(0xFF22C55E),
               ),
@@ -194,9 +185,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Positioned(
             left: 24,
             top: 402,
-            child: const Text(
+            child: Text(
               'Completed',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 11,
                 color: Color(0xFF64748B),
               ),
@@ -205,9 +196,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Positioned(
             left: 141,
             top: 402,
-            child: const Text(
+            child: Text(
               'Pending',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 11,
                 color: Color(0xFF64748B),
               ),
@@ -216,9 +207,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Positioned(
             left: 258,
             top: 402,
-            child: const Text(
+            child: Text(
               'Day streak',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 11,
                 color: Color(0xFF64748B),
               ),
@@ -227,9 +218,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Positioned(
             left: 24,
             top: 464,
-            child: const Text(
+            child: Text(
               'SETTINGS',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 10,
                 color: Color(0xFF64748B),
               ),
@@ -241,31 +232,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: 342,
             height: 52,
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E293B),
-                borderRadius: BorderRadius.all(Radius.circular(12)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(12),
               ),
-            ),
-          ),
-          Positioned(
-            left: 44,
-            top: 506,
-            child: const Text(
-              '🔔  Notifications',
-              style: TextStyle(
-                fontSize: 15,
-                color: Color(0xFFE2E8F0),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 0, // Use right for 330 based on total width
-            top: 506,
-            child: const Text(
-              '›',
-              style: TextStyle(
-                fontSize: 18,
-                color: Color(0xFF475569),
+              child: Row(
+                children: [
+                  SizedBox(width: 20),
+                  Text(
+                    '🔔  Notifications',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () {},
+                    child: const Icon(
+                      Icons.chevron_right,
+                      color: Color(0xFF475569),
+                      size: 18,
+                    ),
+                  ),
+                  SizedBox(width: 20),
+                ],
               ),
             ),
           ),
@@ -275,20 +266,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: 342,
             height: 52,
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E293B),
-                borderRadius: BorderRadius.all(Radius.circular(12)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(12),
               ),
-            ),
-          ),
-          Positioned(
-            left: 44,
-            top: 566,
-            child: const Text(
-              '🌙  Dark Mode',
-              style: TextStyle(
-                fontSize: 15,
-                color: Color(0xFFE2E8F0),
+              child: Row(
+                children: [
+                  SizedBox(width: 20),
+                  Text(
+                    '🌙  Dark Mode',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFFE2E8F0),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -298,31 +290,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: 342,
             height: 52,
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E293B),
-                borderRadius: BorderRadius.all(Radius.circular(12)),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(12),
               ),
-            ),
-          ),
-          Positioned(
-            left: 44,
-            top: 626,
-            child: const Text(
-              '📊  Export Data',
-              style: TextStyle(
-                fontSize: 15,
-                color: Color(0xFFE2E8F0),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 0,
-            top: 626,
-            child: const Text(
-              '›',
-              style: TextStyle(
-                fontSize: 18,
-                color: Color(0xFF475569),
+              child: Row(
+                children: [
+                  SizedBox(width: 20),
+                  Text(
+                    '📊  Export Data',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () {},
+                    child: const Icon(
+                      Icons.chevron_right,
+                      color: Color(0xFF475569),
+                      size: 18,
+                    ),
+                  ),
+                  SizedBox(width: 20),
+                ],
               ),
             ),
           ),
@@ -331,26 +323,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
             top: 710,
             width: 342,
             height: 52,
-            child: GestureDetector(
-              onTap: _goToLogin,
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF1C1917),
-                  borderRadius: BorderRadius.all(Radius.circular(14)),
-                ),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: EdgeInsets.only(left: 0),
-                    child: Text(
-                      'Sign Out',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Color(0xFEF4444),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1917),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Center(
+                child: Text(
+                  'Sign Out',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFFEF4444),
                   ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 24,
+            top: 726,
+            child: GestureDetector(
+              onTap: () {
+                context.go('/login');
+              },
+              child: Text(
+                'Sign Out',
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFFEF4444),
                 ),
               ),
             ),
