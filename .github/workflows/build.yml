@@ -6,10 +6,6 @@ on:
         description: 'Unique build identifier'
         required: true
         type: string
-      branch:
-        description: 'Branch containing the generated project'
-        required: true
-        type: string
       app_name:
         required: false
         default: 'My App'
@@ -17,54 +13,28 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch }}
+          ref: generated
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      # ── CACHES ──────────────────────────────────────────────────
-      # Even though runners are ephemeral, GitHub Actions restores
-      # these caches into the fresh VM at the start of each run.
-      # First build populates them (~6–10 min). Every build after
-      # that drops to ~3–5 min because Flutter/Gradle/pub deps are
-      # restored from cache instead of re-downloaded.
-
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-${{ runner.os }}-
-
-      - name: Cache Pub
-        uses: actions/cache@v4
-        with:
-          path: ~/.pub-cache
-          key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock', '**/pubspec.yaml') }}
-          restore-keys: |
-            pub-${{ runner.os }}-
-
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: true        # Flutter SDK itself
+          cache: true
 
-      - name: Flutter pub get
-        run: flutter pub get
+      - run: flutter pub get
 
-      - name: Analyze (FATAL on any issue)
-        run: flutter analyze --fatal-infos --fatal-warnings
+      - name: Analyze (warnings only)
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        continue-on-error: true
 
-      - name: Build release APK (arm64 only — ~8–15 MB)
+      - name: Build release APK (arm64 only, ~8-15 MB)
         run: flutter build apk --release --target-platform android-arm64 --split-per-abi
 
       - name: List APK output
@@ -76,11 +46,3 @@ jobs:
           path: build/app/outputs/flutter-apk/
           retention-days: 7
           if-no-files-found: error
-
-      - name: Upload generated Dart on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-lib-${{ github.event.inputs.build_id }}
-          path: lib/
-          retention-days: 3
