@@ -1,0 +1,25 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    # Cosmetic lints from AI codegen should never block an APK build.
+    prefer_const_declarations: ignore
+    prefer_const_constructors: ignore
+    prefer_const_literals_to_create_immutables: ignore
+    constant_identifier_names: ignore
+    non_constant_identifier_names: ignore
+    use_key_in_widget_constructors: ignore
+    avoid_print: ignore
+    unused_import: warning
+    unused_local_variable: warning
+    unused_field: warning
+    dead_code: warning
+linter:
+  rules:
+    prefer_const_constructors: false
+    prefer_const_literals_to_create_immutables: false
+    prefer_const_declarations: false
+    constant_identifier_names: false
+    non_constant_identifier_names: false
+    use_key_in_widget_constructors: false
+    avoid_print: false
