@@ -1,0 +1,34 @@
+:root {
+  --app-bg: #ffffff;
+  --app-fg: #0f172a;
+  --app-accent: #2563eb;
+  --app-muted: #64748b;
+  --app-surface: #f8fafc;
+  --app-border: #e2e8f0;
+  color-scheme: light;
+}
+
+
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--app-bg);
+  color: var(--app-fg);
+  font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* Keep the UI out of the status bar, notch, and home indicator. */
+#root {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+button { font: inherit; cursor: pointer; }
+input, textarea, select { font: inherit; }
+a { color: inherit; }

@@ -1,0 +1,15 @@
+{
+  "appId": "com.cal.c",
+  "appName": "calc",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 600,
+      "backgroundColor": "#ffffff",
+      "showSpinner": false
+    }
+  }
+}
