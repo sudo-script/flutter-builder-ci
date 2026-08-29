@@ -1,4 +1,4 @@
-name: Build Flutter APK
+name: Build React APK
 on:
   workflow_dispatch:
     inputs:
@@ -23,17 +23,30 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch }}
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
+      - uses: android-actions/setup-android@v3
+
       # ── CACHES ──────────────────────────────────────────────────
-      # Even though runners are ephemeral, GitHub Actions restores
-      # these caches into the fresh VM at the start of each run.
-      # First build populates them (~6–10 min). Every build after
-      # that drops to ~3–5 min because Flutter/Gradle/pub deps are
-      # restored from cache instead of re-downloaded.
+      # Runners are ephemeral, but Actions restores these into the
+      # fresh VM at the start of each run. The first build populates
+      # them (~6–9 min); later builds land around 3–5 min because npm
+      # and Gradle dependencies come back from cache.
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-
 
       - name: Cache Gradle
         uses: actions/cache@v4
@@ -41,47 +54,42 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/package.json', '**/capacitor.config.json') }}
           restore-keys: |
             gradle-${{ runner.os }}-
 
-      - name: Cache Pub
-        uses: actions/cache@v4
-        with:
-          path: ~/.pub-cache
-          key: pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock', '**/pubspec.yaml') }}
-          restore-keys: |
-            pub-${{ runner.os }}-
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
 
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true        # Flutter SDK itself
+      - name: Build web bundle
+        run: npm run build
 
-      - name: Flutter pub get
-        run: flutter pub get
+      - name: Add Android platform
+        run: npx cap add android
 
-      - name: Analyze (warnings only — cosmetic infos demoted in analysis_options.yaml)
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
-        continue-on-error: true
+      - name: Apply app icon, name, and version
+        run: node scripts/apply-android-resources.mjs
 
-      - name: Build release APK (arm64 only — ~8–15 MB)
-        run: flutter build apk --release --target-platform android-arm64 --split-per-abi
+      - name: Sync web assets into Android
+        run: npx cap sync android
+
+      - name: Assemble debug APK
+        run: cd android && chmod +x ./gradlew && ./gradlew assembleDebug --no-daemon
 
       - name: List APK output
-        run: find build/ -name '*.apk' | sort
+        run: find android/app/build/outputs -name '*.apk' | sort
 
       - uses: actions/upload-artifact@v4
         with:
           name: apk-${{ github.event.inputs.build_id }}
-          path: build/app/outputs/flutter-apk/
+          path: android/app/build/outputs/apk/debug/
           retention-days: 7
           if-no-files-found: error
 
-      - name: Upload generated Dart on failure
+      - name: Upload generated source on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: generated-lib-${{ github.event.inputs.build_id }}
-          path: lib/
+          name: generated-src-${{ github.event.inputs.build_id }}
+          path: src/
           retention-days: 3
