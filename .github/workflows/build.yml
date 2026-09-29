@@ -33,6 +33,12 @@ jobs:
           java-version: '17'
 
       - uses: android-actions/setup-android@v3
+        with:
+          # v3 still installs the legacy SDK package "tools" by default.
+          # Google removed it, so sdkmanager exits 1 with
+          # "Failed to find package 'tools'" and the APK build never starts.
+          # Capacitor 6 compiles against Android 34.
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
 
       # ── CACHES ──────────────────────────────────────────────────
       # Runners are ephemeral, but Actions restores these into the
